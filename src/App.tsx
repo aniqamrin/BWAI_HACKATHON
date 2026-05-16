@@ -111,25 +111,25 @@ export default function App() {
       />
       <CohortMetrics relationships={relationships} evaluation={evaluation} />
       <div className="grid flex-1 grid-cols-[minmax(0,1fr)_390px] gap-0">
-        <section className="flex min-h-[520px] flex-col border-r border-[#17211c] p-8">
-          <div className="flex items-start justify-between gap-6">
+        <section className="grid min-h-[520px] grid-rows-[auto_1fr] border-r border-[#17211c] p-5">
+          <div className="grid grid-cols-[minmax(220px,0.55fr)_minmax(0,1fr)] gap-5">
             <div>
               <p className="ui-sans text-xs font-semibold uppercase tracking-[0.14em] text-[#6c715f]">
                 Relationship surface
               </p>
-              <h2 className="mt-3 text-4xl font-semibold leading-none">Mentor-startup relationship graph</h2>
+              <h2 className="mt-2 text-3xl font-semibold leading-none">Mentor-startup relationship graph</h2>
             </div>
-            <div className="grid w-[360px] gap-3">
-              <div className="ui-sans grid grid-cols-3 border border-[#9d8f77] bg-[#fffaf0] text-center">
-                <div className="border-r border-[#9d8f77] px-4 py-3">
+            <div className="grid grid-cols-[270px_minmax(0,1fr)] gap-3">
+              <div className="ui-sans grid grid-cols-3 self-start border border-[#9d8f77] bg-[#fffaf0] text-center">
+                <div className="border-r border-[#9d8f77] px-3 py-2">
                   <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[#657064]">Healthy</p>
                   <p className="mt-1 text-2xl font-semibold text-[#17211c]">{statusCounts.healthy}</p>
                 </div>
-                <div className="border-r border-[#9d8f77] px-4 py-3">
+                <div className="border-r border-[#9d8f77] px-3 py-2">
                   <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[#657064]">Watch</p>
                   <p className="mt-1 text-2xl font-semibold text-[#17211c]">{statusCounts.watch}</p>
                 </div>
-                <div className="px-4 py-3">
+                <div className="px-3 py-2">
                   <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[#657064]">At risk</p>
                   <p className="mt-1 text-2xl font-semibold text-[#17211c]">{statusCounts.atRisk}</p>
                 </div>
@@ -138,7 +138,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="mt-8 flex flex-1 border border-[#9d8f77] bg-[#fffaf0]">
+          <div className="mt-3 flex min-h-0 border border-[#9d8f77] bg-[#fffaf0]">
             <CohortGraph
               relationships={relationships}
               mentors={mentors}

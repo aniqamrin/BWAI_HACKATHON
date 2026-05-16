@@ -50,10 +50,10 @@ export function CohortMetrics({ relationships, evaluation }: CohortMetricsProps)
   return (
     <section className="grid grid-cols-4 border-b border-[#17211c]">
       {metrics.map((metric) => (
-        <article key={metric.label} className="min-h-40 border-r border-[#17211c] p-6 last:border-r-0">
+        <article key={metric.label} className="min-h-28 border-r border-[#17211c] px-6 py-4 last:border-r-0">
           <p className="ui-sans text-xs font-semibold uppercase tracking-[0.14em] text-[#6c715f]">{metric.label}</p>
-          <p className="mt-4 text-5xl font-semibold leading-none text-[#17211c]">{metric.value}</p>
-          <p className="ui-sans mt-5 text-sm leading-6 text-[#4c574f]">{metric.detail}</p>
+          <p className="mt-3 text-4xl font-semibold leading-none text-[#17211c]">{metric.value}</p>
+          <p className="ui-sans mt-3 text-xs leading-5 text-[#4c574f]">{metric.detail}</p>
         </article>
       ))}
     </section>

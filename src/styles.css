@@ -58,7 +58,7 @@ button {
   gap: 24px;
   border-bottom: 1px solid #9d8f77;
   background-color: #f7f1e5;
-  padding: 18px 22px;
+  padding: 12px 18px;
 }
 
 .cohort-graph-status__eyebrow {
@@ -72,7 +72,7 @@ button {
 
 .cohort-graph-status h3 {
   color: #17211c;
-  font-size: 1.38rem;
+  font-size: 1.12rem;
   font-weight: 600;
   line-height: 1;
   margin: 0;
@@ -80,9 +80,9 @@ button {
 }
 
 .cohort-graph {
-  height: 660px;
-  max-height: 72vh;
-  min-height: 560px;
+  height: 560px;
+  max-height: 64vh;
+  min-height: 420px;
   width: 100%;
   background-color: #fffaf0;
 }

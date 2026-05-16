@@ -30,15 +30,15 @@ const legendItems: LegendItem[] = [
 
 export function StatusLegend() {
   return (
-    <section className="ui-sans border border-[#9d8f77] bg-[#fffaf0] p-4" aria-label="Relationship health legend">
+    <section className="ui-sans border border-[#9d8f77] bg-[#fffaf0] p-3" aria-label="Relationship health legend">
       <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[#6c715f]">Status legend</p>
-      <div className="mt-3 grid gap-3">
+      <div className="mt-2 grid gap-2">
         {legendItems.map((item) => (
-          <div key={item.status} className="grid grid-cols-[10px_minmax(0,1fr)] gap-3">
+          <div key={item.status} className="grid grid-cols-[10px_minmax(0,1fr)] gap-2">
             <span className={`mt-1 h-2.5 w-2.5 ${item.swatchClass}`} aria-hidden="true" />
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#17211c]">{item.label}</p>
-              <p className="mt-1 text-xs leading-5 text-[#59675e]">{item.definition}</p>
+              <p className="mt-0.5 text-[0.68rem] leading-4 text-[#59675e]">{item.definition}</p>
             </div>
           </div>
         ))}
