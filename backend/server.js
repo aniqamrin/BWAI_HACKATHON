@@ -20,6 +20,7 @@ const relationshipRoutes = require('./src/routes/relationships');
 const dashboardRoutes = require('./src/routes/dashboard');
 const graphRoutes = require('./src/routes/graph');
 const investorRoutes = require('./src/routes/investors');
+const firestoreRoutes = require('./src/routes/firestore');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -76,6 +77,7 @@ app.use('/api/match', matchRoutes);
 app.use('/api/relationships', relationshipRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/graph', graphRoutes);
+app.use('/api/firestore', firestoreRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

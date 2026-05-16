@@ -1,3 +1,8 @@
+backend/serviceAccountKey.json
+.env
+node_modules/
+dist/
+
 # Dependencies
 node_modules/
 .pnp

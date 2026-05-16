@@ -1,6 +1,7 @@
 const { generateContent } = require('./geminiService');
 const { query } = require('../db/connection');
 const logger = require('../utils/logger');
+const firestore = require('./firestoreService');
 
 const HEALTH_ANALYSIS_PROMPT = (relationship, logs) => `
 You are an ecosystem relationship health analyst. Analyze this relationship and its engagement history.
@@ -47,13 +48,13 @@ async function analyzeRelationshipHealth(relationshipId) {
     const health = ['excellent', 'good', 'fair', 'poor', 'inactive'].includes(aiResult.engagement_health)
       ? aiResult.engagement_health : 'fair';
 
-    // Update relationship health
+    // Update relationship health in PostgreSQL
     await query(
       `UPDATE relationships SET engagement_health = $1, next_action = $2, updated_at = NOW() WHERE id = $3`,
       [health, aiResult.recommended_next_actions?.[0] || null, relationshipId]
     );
 
-    return {
+    const result = {
       relationship_id: relationshipId,
       engagement_health: health,
       health_score: aiResult.health_score || 70,
@@ -63,6 +64,11 @@ async function analyzeRelationshipHealth(relationshipId) {
       intervention_suggestions: aiResult.intervention_suggestions || [],
       ai_summary: aiResult.ai_summary || 'Relationship health analysis completed'
     };
+
+    // Broadcast to Firestore for real-time listeners
+    await firestore.updateRelationshipHealth(relationshipId, result);
+
+    return result;
   } catch (error) {
     logger.error('Relationship health analysis error:', error);
     throw error;
