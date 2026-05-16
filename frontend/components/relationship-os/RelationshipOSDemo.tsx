@@ -28,7 +28,6 @@ import {
   relationshipOsSnapshot,
   type Action,
   type ActionStatus,
-  type Actor,
   type EvidenceSource,
   type LensId,
   type MentorRanking,
@@ -95,31 +94,12 @@ const statusClasses: Record<ActionStatus | "Approved" | "Evidence requested", st
   "Evidence requested": "border-[#934439] bg-[#fffaf0] text-[#743025]",
 };
 
-const actorPositions: Record<string, { x: number; y: number }> = {
-  "startup-atlas-ai": { x: 17, y: 34 },
-  "startup-carbonloop": { x: 18, y: 62 },
-  "startup-nora-health": { x: 18, y: 82 },
-  "mentor-priya": { x: 72, y: 25 },
-  "mentor-farah": { x: 73, y: 58 },
-  "mentor-alicia": { x: 74, y: 82 },
-  "mentor-daniel": { x: 51, y: 63 },
-  "partner-greenbridge": { x: 52, y: 41 },
+const primaryActionsByLens: Record<LensId, string> = {
+  relationships: "action-atlas-priya",
+  "mentor-ranking": "action-rank-priya",
+  "partner-intros": "action-greenbridge-carbonloop",
+  evidence: "action-greenbridge-carbonloop",
 };
-
-const relationshipColors = {
-  high: "#45624f",
-  mid: "#ad8448",
-  low: "#934439",
-};
-
-function actorInitials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
 
 function parseCsvRows(csvText: string) {
   const rows: string[][] = [];
@@ -302,12 +282,6 @@ function processCsvEvidenceRows(csv: CsvEvidenceState): ProcessedCsvSummary {
   };
 }
 
-function getHealthColor(score: number) {
-  if (score >= 82) return relationshipColors.high;
-  if (score >= 72) return relationshipColors.mid;
-  return relationshipColors.low;
-}
-
 function getActorById(id: string) {
   const actor = relationshipOsSnapshot.actors.find((candidate) => candidate.id === id);
 
@@ -331,32 +305,23 @@ function StatusPill({ status }: { status: ActionStatus | "Approved" | "Evidence 
   );
 }
 
-function HeaderMetricButton({
+function CompactMetricButton({
   label,
   value,
-  detail,
-  actionLabel,
   onClick,
 }: {
   label: string;
   value: string;
-  detail: string;
-  actionLabel: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      className="group min-h-[76px] border border-[#9d8f77] bg-[#fbf4e7] px-2 py-3 text-center transition-colors hover:bg-[#f7f1e5] focus:outline-none focus-visible:bg-[#f7f1e5] focus-visible:ring-2 focus-visible:ring-[#17211c] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffaf0] sm:min-h-[96px] sm:px-4 sm:py-4"
+      className="inline-flex items-center gap-1 border border-[#9d8f77] bg-[#f7f1e5] px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[#59675e] hover:bg-[#fbf4e7] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#17211c]"
       onClick={onClick}
     >
-      <span className="block text-[0.54rem] font-bold uppercase tracking-[0.16em] text-[#657064] sm:text-[0.66rem] sm:tracking-[0.2em]">{label}</span>
-      <span className="mt-2 block text-3xl font-semibold leading-none text-[#17211c] sm:text-4xl">{value}</span>
-      <span className="mt-1 block text-xs text-[#59675e] sm:text-sm">{detail}</span>
-      <span className="mt-3 hidden items-center justify-center gap-1 text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[#405047] opacity-80 group-hover:opacity-100 sm:inline-flex">
-        {actionLabel}
-        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-      </span>
+      <span className="text-[#17211c]">{value}</span>
+      {label}
     </button>
   );
 }
@@ -452,12 +417,12 @@ function LensBar({
       metric: `${relationshipOsSnapshot.actions.filter((action) => action.lensId === "relationships").length} queued`,
     },
     "mentor-ranking": {
-      title: "Mentor Ranking",
+      title: "Mentors",
       detail: "Who to deploy first",
       metric: `${relationshipOsSnapshot.mentorRankings.length} ranked`,
     },
     "partner-intros": {
-      title: "Partner Intros",
+      title: "Partners",
       detail: "Warm paths worth taking",
       metric: `${relationshipOsSnapshot.actions.filter((action) => action.lensId === "partner-intros").length} intro`,
     },
@@ -470,7 +435,7 @@ function LensBar({
 
   return (
     <nav aria-label="Relationship OS views" className="border border-[#17211c] bg-[#17211c] p-2">
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <div className="grid grid-cols-4 gap-2">
       {relationshipOsSnapshot.lenses.map((lens) => {
         const IconComponent = lensIcons[lens.id];
         const isActive = activeLens === lens.id;
@@ -482,17 +447,17 @@ function LensBar({
             type="button"
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "grid min-h-[72px] grid-cols-[18px_minmax(0,1fr)] items-center gap-2 border px-3 py-3 text-left transition-colors sm:grid-cols-[20px_minmax(0,1fr)_auto] sm:gap-3",
+              "flex min-h-[58px] flex-col items-start justify-center gap-1 border px-2 py-2 text-left transition-colors sm:grid sm:min-h-[72px] sm:grid-cols-[20px_minmax(0,1fr)_auto] sm:items-center sm:gap-3 sm:px-3 sm:py-3",
               isActive ? "border-[#fffaf0] bg-[#fffaf0] text-[#17211c]" : "border-[#4d594f] bg-[#17211c] text-[#e5decd] hover:bg-[#24332b]",
             )}
             onClick={() => onSelectLens(lens.id)}
           >
             <IconComponent className="h-4 w-4" aria-hidden />
             <span className="min-w-0">
-              <span className="block text-base font-semibold leading-tight">{copy.title}</span>
-              <span className={cn("mt-1 block text-xs leading-5", isActive ? "text-[#405047]" : "text-[#d9cfbd]")}>{copy.detail}</span>
+              <span className="block text-sm font-semibold leading-tight sm:text-base">{copy.title}</span>
+              <span className={cn("mt-1 hidden text-xs leading-5 sm:block", isActive ? "text-[#405047]" : "text-[#d9cfbd]")}>{copy.detail}</span>
             </span>
-            <span className={cn("col-span-2 w-fit border px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.1em] sm:col-span-1", isActive ? "border-[#9d8f77] text-[#59675e]" : "border-[#4d594f] text-[#c7bba9]")}>
+            <span className={cn("hidden w-fit border px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.1em] sm:block", isActive ? "border-[#9d8f77] text-[#59675e]" : "border-[#4d594f] text-[#c7bba9]")}>
               {copy.metric}
             </span>
           </button>
@@ -569,82 +534,6 @@ function ActionQueue({
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </span>
             </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function RelationshipMap({
-  selectedAction,
-  selectedRelationship,
-}: {
-  selectedAction: Action;
-  selectedRelationship: Relationship | null;
-}) {
-  const involvedActorIds = new Set(selectedAction.actorIds);
-
-  return (
-    <section className="border border-[#17211c] bg-[#fffaf0]">
-      <div className="flex items-end justify-between gap-4 border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
-        <div>
-          <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Supporting insights</p>
-          <h2 className="mt-1 text-2xl font-semibold leading-tight">Relationship map</h2>
-        </div>
-        <p className="text-right text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">
-          {selectedRelationship ? `${selectedRelationship.baselineHealth} to ${selectedRelationship.health}` : "Evidence linked"}
-        </p>
-      </div>
-
-      <div className="relative min-h-[480px] overflow-hidden bg-[#fbf4e7]">
-        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
-          {relationshipOsSnapshot.relationships.map((relationship) => {
-            const start = actorPositions[relationship.startupId];
-            const end = actorPositions[relationship.mentorId];
-            const isSelected = relationship.id === selectedRelationship?.id;
-
-            return (
-              <line
-                key={relationship.id}
-                x1={start.x}
-                y1={start.y}
-                x2={end.x}
-                y2={end.y}
-                stroke={getHealthColor(relationship.health)}
-                strokeWidth={isSelected ? 0.85 : 0.42}
-                strokeOpacity={isSelected ? 1 : 0.45}
-              />
-            );
-          })}
-          <line x1={actorPositions["startup-carbonloop"].x} y1={actorPositions["startup-carbonloop"].y} x2={actorPositions["partner-greenbridge"].x} y2={actorPositions["partner-greenbridge"].y} stroke="#59675e" strokeDasharray="1.5 1.5" strokeWidth={0.42} strokeOpacity={0.8} />
-        </svg>
-
-        {relationshipOsSnapshot.actors.map((actor) => {
-          const position = actorPositions[actor.id];
-          const isInvolved = involvedActorIds.has(actor.id);
-
-          return (
-            <div
-              key={actor.id}
-              className={cn(
-                "absolute w-[164px] max-w-[42vw] border px-3 py-3 shadow-[4px_4px_0_#9d8f77]",
-                actor.type === "mentor" ? "bg-[#17211c] text-[#fffaf0]" : "bg-[#fffaf0] text-[#17211c]",
-                isInvolved ? "border-[#17211c] opacity-100" : "border-[#9d8f77] opacity-60",
-              )}
-              style={{ left: `${position.x}%`, top: `${position.y}%`, transform: "translate(-50%, -50%)" }}
-            >
-              <div className="flex items-center gap-2">
-                <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center border text-[0.64rem] font-bold", actor.type === "mentor" ? "border-[#fffaf0]" : "border-[#17211c]")}>
-                  {actorInitials(actor.name)}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold">{actor.name}</p>
-                  <p className={cn("truncate text-[0.64rem] font-bold uppercase tracking-[0.08em]", actor.type === "mentor" ? "text-[#d9cfbd]" : "text-[#59675e]")}>{actor.type}</p>
-                </div>
-              </div>
-              <p className={cn("mt-2 line-clamp-2 text-xs leading-5", actor.type === "mentor" ? "text-[#e5decd]" : "text-[#405047]")}>{actor.subtitle}</p>
-            </div>
           );
         })}
       </div>
@@ -749,28 +638,137 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
   );
 }
 
-function TabIntro({
-  eyebrow,
-  title,
-  detail,
-  meta,
-}: {
+type RecommendationCopy = {
   eyebrow: string;
   title: string;
-  detail: string;
-  meta: string;
+  summary: string;
+  status: ActionStatus | "Approved" | "Evidence requested";
+  confidence: number;
+  reasons: string[];
+  primaryLabel: string;
+  primaryDecision: Decision;
+  detailLabel: string;
+};
+
+function getRecommendationCopy(activeLens: LensId, action: Action): RecommendationCopy {
+  if (activeLens === "mentor-ranking") {
+    return {
+      eyebrow: "Recommendation",
+      title: "Deploy Priya first",
+      summary: "Priya is the clearest mentor to activate because the need, fit, and timing all line up.",
+      status: action.status,
+      confidence: action.confidence,
+      reasons: ["Atlas has a concrete procurement blocker.", "Priya has the strongest enterprise GTM fit.", "Both sides show high confidence."],
+      primaryLabel: "Assign mentor",
+      primaryDecision: "approved",
+      detailLabel: "Show ranking details",
+    };
+  }
+
+  if (activeLens === "partner-intros") {
+    return {
+      eyebrow: "Recommendation",
+      title: "Do not send the GreenBridge intro yet",
+      summary: "The partner fit is promising, but the intro should wait until one missing proof point is collected.",
+      status: action.status,
+      confidence: action.confidence,
+      reasons: ["GreenBridge is relevant to CarbonLoop's pilot.", "The grant timeline makes the intro useful.", "Warehouse pilot economics are still missing."],
+      primaryLabel: "Request missing evidence",
+      primaryDecision: "needs_evidence",
+      detailLabel: "Show partner rationale",
+    };
+  }
+
+  if (activeLens === "evidence") {
+    return {
+      eyebrow: "Evidence readout",
+      title: "Two decisions are supported, one needs more proof",
+      summary: "The CSV and WhatsApp/TXT evidence is enough for mentor action, but partner approval still needs validation.",
+      status: "Review suggested",
+      confidence: 84,
+      reasons: ["CSV syncs support the mentor matches.", "WhatsApp/TXT evidence confirms real blockers.", "Partner intro evidence is still incomplete."],
+      primaryLabel: "Review missing evidence",
+      primaryDecision: "needs_evidence",
+      detailLabel: "Show evidence",
+    };
+  }
+
+  return {
+    eyebrow: "Recommendation",
+    title: "Create Priya to Atlas follow-up",
+    summary: "This is the cleanest next move: the problem is specific, the mentor fit is strong, and the confidence is high.",
+    status: action.status,
+    confidence: action.confidence,
+    reasons: ["Atlas is stuck on procurement risk.", "Priya can help with enterprise buyer mapping.", "Founder and mentor confidence are both high."],
+    primaryLabel: "Approve next step",
+    primaryDecision: "approved",
+    detailLabel: "Show why",
+  };
+}
+
+function PrimaryRecommendationCard({
+  recommendation,
+  decision,
+  onPrimaryAction,
+  onShowDetails,
+}: {
+  recommendation: RecommendationCopy;
+  decision: Decision | undefined;
+  onPrimaryAction: () => void;
+  onShowDetails: () => void;
 }) {
+  const visibleStatus = decision === "approved" ? "Approved" : decision === "needs_evidence" ? "Evidence requested" : recommendation.status;
+
   return (
-    <div className="flex flex-col gap-3 border border-[#17211c] bg-[#fffaf0] px-4 py-4 md:flex-row md:items-end md:justify-between">
-      <div>
-        <p className="text-[0.66rem] font-bold uppercase tracking-[0.16em] text-[#657064]">{eyebrow}</p>
-        <h2 className="mt-1 text-3xl font-semibold leading-tight text-[#17211c]">{title}</h2>
-        <p className="mt-2 max-w-[76ch] text-sm leading-6 text-[#405047]">{detail}</p>
+    <section className="border border-[#17211c] bg-[#fffaf0]">
+      <div className="grid gap-5 px-4 py-5 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusPill status={visibleStatus} />
+            <span className="border border-[#9d8f77] bg-[#fbf4e7] px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[#59675e]">
+              {recommendation.confidence}% confidence
+            </span>
+          </div>
+          <p className="mt-5 text-[0.66rem] font-bold uppercase tracking-[0.16em] text-[#657064]">{recommendation.eyebrow}</p>
+          <h2 className="mt-2 max-w-3xl text-3xl font-semibold leading-tight text-[#17211c] md:text-4xl">{recommendation.title}</h2>
+          <p className="mt-3 max-w-[68ch] text-base leading-7 text-[#405047]">{recommendation.summary}</p>
+        </div>
+
+        <div className="border border-[#cab99d] bg-[#fbf4e7] px-4 py-4">
+          <p className="text-[0.64rem] font-bold uppercase tracking-[0.14em] text-[#657064]">Why this is the answer</p>
+          <ul className="mt-3 space-y-2">
+            {recommendation.reasons.map((reason) => (
+              <li key={reason} className="flex gap-2 text-sm leading-6 text-[#263b2d]">
+                <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-[#45624f]" aria-hidden />
+                <span>{reason}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
-      <p className="w-fit border border-[#9d8f77] bg-[#fbf4e7] px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">
-        {meta}
-      </p>
-    </div>
+
+      <div className="grid gap-2 border-t border-[#cab99d] bg-[#f7f1e5] px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <button
+          type="button"
+          className={cn(
+            "flex min-h-11 items-center justify-center gap-2 border border-[#17211c] px-4 py-2 text-sm font-bold",
+            recommendation.primaryDecision === "approved" ? "bg-[#17211c] text-[#fffaf0] hover:bg-[#263b2d]" : "bg-[#934439] text-[#fffaf0] hover:bg-[#743025]",
+          )}
+          onClick={onPrimaryAction}
+        >
+          {recommendation.primaryDecision === "approved" ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : <Search className="h-4 w-4" aria-hidden />}
+          {recommendation.primaryLabel}
+        </button>
+        <button
+          type="button"
+          className="flex min-h-11 items-center justify-center gap-2 border border-[#17211c] bg-[#fffaf0] px-4 py-2 text-sm font-bold text-[#17211c] hover:bg-[#fbf4e7]"
+          onClick={onShowDetails}
+        >
+          {recommendation.detailLabel}
+          <ArrowRight className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -805,58 +803,6 @@ function RankingsPanel({ rankings }: { rankings: MentorRanking[] }) {
             </article>
           );
         })}
-      </div>
-    </section>
-  );
-}
-
-function ActorProfile({ actor }: { actor: Actor }) {
-  return (
-    <article className="border border-[#17211c] bg-[#fffaf0] px-4 py-4">
-      <div className="flex items-start gap-3">
-        <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center border text-sm font-bold", actor.type === "mentor" ? "border-[#17211c] bg-[#17211c] text-[#fffaf0]" : "border-[#17211c] bg-[#f7f1e5] text-[#17211c]")}>
-          {actorInitials(actor.name)}
-        </div>
-        <div className="min-w-0">
-          <p className="text-base font-semibold text-[#17211c]">{actor.name}</p>
-          <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">{actor.subtitle}</p>
-        </div>
-      </div>
-      <p className="mt-4 text-sm leading-6 text-[#405047]">{actor.summary}</p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {actor.tags.map((tag) => (
-          <span key={tag} className="border border-[#9d8f77] bg-[#fbf4e7] px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[#59675e]">
-            {tag}
-          </span>
-        ))}
-      </div>
-    </article>
-  );
-}
-
-function ActorContextPanel({
-  selectedActors,
-  selectedAction,
-}: {
-  selectedActors: Actor[];
-  selectedAction: Action;
-}) {
-  return (
-    <section id="relationship-os-actors" tabIndex={-1} className="scroll-mt-4 border border-[#17211c] bg-[#fffaf0] focus:outline-none">
-      <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
-        <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Actor profile</p>
-        <h2 className="mt-1 text-2xl font-semibold leading-tight">Who this affects</h2>
-      </div>
-      <div className="grid gap-3 p-3">
-        <ActionCallout
-          label="Recommendation"
-          title={`Focus this move on ${selectedActors.map((actor) => actor.name).join(" + ")}`}
-          detail={`There are ${relationshipOsSnapshot.actors.length} mapped actors in the graph. For this decision, the strongest action is: ${selectedAction.summary}`}
-          tone="recommendation"
-        />
-        {selectedActors.map((actor) => (
-          <ActorProfile key={actor.id} actor={actor} />
-        ))}
       </div>
     </section>
   );
@@ -1091,7 +1037,7 @@ export default function RelationshipOSDemo() {
   const [csvEvidence, setCsvEvidence] = useState<CsvEvidenceState | null>(null);
   const [pastedEvidence, setPastedEvidence] = useState("");
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
-  const [supportingOpen, setSupportingOpen] = useState(false);
+  const [expandedLens, setExpandedLens] = useState<LensId | null>(null);
   const [rawInfoOpen, setRawInfoOpen] = useState(false);
 
   const visibleActions = useMemo(() => {
@@ -1105,14 +1051,16 @@ export default function RelationshipOSDemo() {
 
   const selectedAction = visibleActions.find((action) => action.id === selectedActionId) ?? visibleActions[0];
   const selectedRelationship = getRelationshipById(selectedAction.relationshipId);
-  const selectedActors = selectedAction.actorIds.map(getActorById);
   const selectedSignals = selectedAction.signals
     .map((signalId) => relationshipOsSnapshot.signals.find((signal) => signal.id === signalId))
     .filter((signal): signal is Signal => Boolean(signal));
+  const recommendation = getRecommendationCopy(activeLens, selectedAction);
 
   function selectLens(lensId: LensId) {
     setActiveLens(lensId);
-    const firstAction = relationshipOsSnapshot.actions.find((action) => lensId === "evidence" || action.lensId === lensId);
+    setExpandedLens(null);
+    const primaryAction = relationshipOsSnapshot.actions.find((action) => action.id === primaryActionsByLens[lensId]);
+    const firstAction = primaryAction ?? relationshipOsSnapshot.actions.find((action) => lensId === "evidence" || action.lensId === lensId);
 
     if (firstAction) {
       setSelectedActionId(firstAction.id);
@@ -1134,21 +1082,28 @@ export default function RelationshipOSDemo() {
     if (target === "actions") {
       setActiveLens("relationships");
       setSelectedActionId("action-atlas-priya");
+      setExpandedLens(null);
       scrollToSection("relationship-os-page");
       return;
     }
 
     if (target === "signals") {
       setActiveLens("evidence");
-      setSelectedActionId("action-atlas-priya");
-      scrollToSection("relationship-os-page");
+      setSelectedActionId(primaryActionsByLens.evidence);
+      setExpandedLens("evidence");
+      scrollToSection("relationship-os-detail");
       return;
     }
 
     setActiveLens("relationships");
     setSelectedActionId("action-atlas-priya");
-    setSupportingOpen(true);
-    scrollToSection("relationship-os-actors");
+    setExpandedLens("relationships");
+    scrollToSection("relationship-os-detail");
+  }
+
+  function showDetails() {
+    setExpandedLens(activeLens);
+    scrollToSection("relationship-os-detail");
   }
 
   function recordDecision(actionId: string, decision: Decision) {
@@ -1262,29 +1217,23 @@ export default function RelationshipOSDemo() {
               Relationship OS for ecosystem operators
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#405047] md:text-base">
-              Immediate tabs for actions, mentor ranking, partner intros, and evidence. Raw information is optional and stays out of the main flow.
+              One recommendation at a time. Open the proof only when someone asks for it.
             </p>
           </div>
-          <div className="grid grid-cols-3 border border-[#9d8f77] bg-[#fbf4e7] text-center">
-            <HeaderMetricButton
+          <div className="flex flex-wrap gap-2 lg:max-w-[360px] lg:justify-end">
+            <CompactMetricButton
               label="Actors"
               value={`${relationshipOsSnapshot.actors.length}`}
-              detail="mapped"
-              actionLabel="View actor insight"
               onClick={() => jumpToHeaderMetric("actors")}
             />
-            <HeaderMetricButton
+            <CompactMetricButton
               label="Signals"
               value={`${relationshipOsSnapshot.signals.length}`}
-              detail="linked"
-              actionLabel="View signal insight"
               onClick={() => jumpToHeaderMetric("signals")}
             />
-            <HeaderMetricButton
+            <CompactMetricButton
               label="Actions"
               value={`${relationshipOsSnapshot.actions.length}`}
-              detail="queued"
-              actionLabel="Open decision queue"
               onClick={() => jumpToHeaderMetric("actions")}
             />
           </div>
@@ -1293,15 +1242,33 @@ export default function RelationshipOSDemo() {
         <LensBar activeLens={activeLens} onSelectLens={selectLens} />
 
         <section id="relationship-os-page" tabIndex={-1} className="scroll-mt-4 grid gap-5 focus:outline-none">
-          {activeLens === "relationships" ? (
-            <>
-              <TabIntro
-                eyebrow="Recommended actions"
-                title="Start with the highest-confidence move"
-                detail="This is the default value page: it tells an operator what to do next, why it matters, and whether to approve or request more evidence."
-                meta={`${visibleActions.length} actions`}
-              />
-              <section className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <PrimaryRecommendationCard
+            recommendation={recommendation}
+            decision={decisions[selectedAction.id]}
+            onPrimaryAction={() => recordDecision(selectedAction.id, recommendation.primaryDecision)}
+            onShowDetails={showDetails}
+          />
+
+          <details
+            id="relationship-os-detail"
+            open={expandedLens === activeLens}
+            onToggle={(event) => setExpandedLens(event.currentTarget.open ? activeLens : null)}
+            className="border border-[#17211c] bg-[#fffaf0]"
+          >
+            <summary className="cursor-pointer list-none border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4 marker:hidden">
+              <span className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                <span>
+                  <span className="block text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Drill-down</span>
+                  <span className="mt-1 block text-2xl font-semibold leading-tight text-[#17211c]">Evidence and detail for this recommendation</span>
+                </span>
+                <span className="text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">
+                  {expandedLens === activeLens ? "Hide details" : "Show details"}
+                </span>
+              </span>
+            </summary>
+
+            {activeLens === "relationships" ? (
+              <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                 <ActionQueue actions={visibleActions} activeActionId={selectedAction.id} decisions={decisions} onSelectAction={setSelectedActionId} />
                 <SelectedInsightPanel
                   selectedAction={selectedAction}
@@ -1309,19 +1276,11 @@ export default function RelationshipOSDemo() {
                   decisions={decisions}
                   onRecordDecision={recordDecision}
                 />
-              </section>
-            </>
-          ) : null}
+              </div>
+            ) : null}
 
-          {activeLens === "mentor-ranking" ? (
-            <>
-              <TabIntro
-                eyebrow="Mentor ranking"
-                title="Deploy the right mentor first"
-                detail="The ranking page turns cohort evidence into a prioritized mentor list, with the best startup match and reasoning visible immediately."
-                meta={`${relationshipOsSnapshot.mentorRankings.length} mentors`}
-              />
-              <section className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+            {activeLens === "mentor-ranking" ? (
+              <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
                 <RankingsPanel rankings={relationshipOsSnapshot.mentorRankings} />
                 <SelectedInsightPanel
                   selectedAction={selectedAction}
@@ -1329,19 +1288,11 @@ export default function RelationshipOSDemo() {
                   decisions={decisions}
                   onRecordDecision={recordDecision}
                 />
-              </section>
-            </>
-          ) : null}
+              </div>
+            ) : null}
 
-          {activeLens === "partner-intros" ? (
-            <>
-              <TabIntro
-                eyebrow="Partner intros"
-                title="Only send intros with enough proof"
-                detail="This page keeps partner introductions practical: a clear recommendation, a confidence level, and an evidence request when the proof is not ready."
-                meta={`${visibleActions.length} intro action`}
-              />
-              <section className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            {activeLens === "partner-intros" ? (
+              <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                 <ActionQueue actions={visibleActions} activeActionId={selectedAction.id} decisions={decisions} onSelectAction={setSelectedActionId} />
                 <SelectedInsightPanel
                   selectedAction={selectedAction}
@@ -1349,19 +1300,11 @@ export default function RelationshipOSDemo() {
                   decisions={decisions}
                   onRecordDecision={recordDecision}
                 />
-              </section>
-            </>
-          ) : null}
+              </div>
+            ) : null}
 
-          {activeLens === "evidence" ? (
-            <>
-              <TabIntro
-                eyebrow="Evidence"
-                title="See why the recommendations are credible"
-                detail="The evidence page shows the model-readable signals behind the tabs. It is proof for the operator, not a required setup step."
-                meta={`${relationshipOsSnapshot.signals.length} signals`}
-              />
-              <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+            {activeLens === "evidence" ? (
+              <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_420px]">
                 <SignalFeedPanel selectedSignals={selectedSignals} />
                 <section className="border border-[#17211c] bg-[#fffaf0]">
                   <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
@@ -1374,36 +1317,10 @@ export default function RelationshipOSDemo() {
                     ))}
                   </div>
                 </section>
-              </section>
-            </>
-          ) : null}
+              </div>
+            ) : null}
+          </details>
         </section>
-
-        <details
-          id="relationship-os-supporting"
-          open={supportingOpen}
-          onToggle={(event) => setSupportingOpen(event.currentTarget.open)}
-          className="border border-[#17211c] bg-[#fffaf0]"
-        >
-          <summary className="cursor-pointer list-none border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4 marker:hidden">
-            <span className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-              <span>
-                <span className="block text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Details and credibility</span>
-                <span className="mt-1 block text-2xl font-semibold leading-tight text-[#17211c]">Proof behind the current tab</span>
-              </span>
-              <span className="text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">
-                {supportingOpen ? "Hide details" : "Open map, actors, and data"}
-              </span>
-            </span>
-          </summary>
-          <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-            <RelationshipMap selectedAction={selectedAction} selectedRelationship={selectedRelationship} />
-            <div className="grid gap-5">
-              <ActorContextPanel selectedActors={selectedActors} selectedAction={selectedAction} />
-              {activeLens !== "evidence" ? <SignalFeedPanel selectedSignals={selectedSignals} /> : null}
-            </div>
-          </div>
-        </details>
 
         <details
           id="relationship-os-raw-info"
