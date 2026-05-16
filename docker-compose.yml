@@ -41,11 +41,12 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      DATABASE_URL: postgresql://ecosystemos:ecosystemos_pass@postgres:5432/ecosystemos_db
+      DATABASE_URL: postgresql://ecosystemos:ecosystemos_pass@postgres:5432/ecosystemos_db?sslmode=disable
       JWT_SECRET: ${JWT_SECRET:-change_this_in_production_super_secret_key}
       JWT_EXPIRES_IN: 7d
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}
       VERTEX_AI_LOCATION: ${VERTEX_AI_LOCATION:-us-central1}
       FIREBASE_API_KEY: ${FIREBASE_API_KEY:-}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
