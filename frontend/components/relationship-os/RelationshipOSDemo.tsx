@@ -1716,17 +1716,17 @@ export default function RelationshipOSDemo() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="border border-[#9d8f77] bg-[#f7f1e5] px-2 py-1 text-[0.64rem] font-bold uppercase tracking-[0.14em] text-[#59675e]">
-                Comparison route
+                X Combinator
               </span>
               <span className="border border-[#9d8f77] bg-[#f7f1e5] px-2 py-1 text-[0.64rem] font-bold uppercase tracking-[0.14em] text-[#59675e]">
                 {relationshipOsSnapshot.ecosystemName}
               </span>
             </div>
             <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-[0.98] tracking-normal md:text-6xl">
-              Relationship OS for program teams
+              X Combinator Relationship OS
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#405047] md:text-base">
-              Pick a company first, then see the recommended mentor, the next action, and the evidence behind it.
+              Built for ecosystem teams: pick a company, see the next best action, and inspect the evidence behind it.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 lg:max-w-[360px] lg:justify-end">
@@ -1894,7 +1894,7 @@ export default function RelationshipOSDemo() {
         </details>
 
         <footer className="flex flex-col gap-3 border border-[#17211c] bg-[#17211c] px-5 py-4 text-[#fffaf0] md:flex-row md:items-center md:justify-between">
-          <p className="text-sm font-semibold">Cohort Atlas, Relationship OS comparison view</p>
+          <p className="text-sm font-semibold">X Combinator Relationship OS comparison view</p>
           <div className="flex flex-wrap gap-3 text-xs font-bold uppercase tracking-[0.1em] text-[#d9cfbd]">
             <span className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" aria-hidden /> May 2026 data</span>
             <span className="inline-flex items-center gap-1"><Globe2 className="h-3.5 w-3.5" aria-hidden /> Google-ready</span>

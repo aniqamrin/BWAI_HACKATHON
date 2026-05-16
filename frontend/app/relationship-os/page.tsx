@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import RelationshipOSDemo from "@/components/relationship-os/RelationshipOSDemo";
 
 export const metadata: Metadata = {
-  title: "Relationship OS Comparison | EcosystemOS AI",
-  description: "Standalone comparison route for the Cohort Atlas Relationship OS demo.",
+  title: "X Combinator Relationship OS",
+  description: "Relationship OS demo for ecosystem teams.",
 };
 
 export default function RelationshipOSPage() {
