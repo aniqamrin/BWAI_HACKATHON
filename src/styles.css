@@ -40,6 +40,11 @@ button {
   display: none;
 }
 
+.cohort-graph-frame {
+  width: 100%;
+  background-color: #fffaf0;
+}
+
 .cohort-graph {
   height: 660px;
   max-height: 72vh;
@@ -139,4 +144,51 @@ button {
 
 .cohort-graph .react-flow__edge.animated .react-flow__edge-path {
   stroke-dasharray: 7 5;
+}
+
+.relationship-trace {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  border-top: 1px solid #9d8f77;
+  background-color: #9d8f77;
+}
+
+.relationship-trace__button {
+  min-height: 42px;
+  border: 0;
+  border-left: 4px solid #47594e;
+  background-color: #fffaf0;
+  color: #314036;
+  font-family: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  padding: 9px 10px;
+  text-align: left;
+  text-transform: uppercase;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+.relationship-trace__button:hover,
+.relationship-trace__button:focus-visible {
+  background-color: #17211c;
+  color: #fffaf0;
+  outline: 2px solid #17211c;
+  outline-offset: -2px;
+}
+
+.relationship-trace__button.trace-risk {
+  border-left-color: #8f3d34;
+}
+
+.relationship-trace__button.trace-watch {
+  border-left-color: #b28c55;
+}
+
+.relationship-trace__button.trace-healthy {
+  border-left-color: #47594e;
 }

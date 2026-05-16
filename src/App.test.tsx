@@ -74,4 +74,21 @@ describe('App', () => {
     expect(screen.getByText('Pending')).toBeVisible();
     expect(screen.queryByText('Executive review drawer')).not.toBeInTheDocument();
   });
+
+  it('selects a relationship from the processed graph trace controls', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(sampleCsv, { status: 200 })),
+    );
+
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /process raw information/i }));
+
+    expect(await screen.findByText('Executive review drawer')).toBeVisible();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Select Maya Chen to LoopPay, healthy relationship' }));
+
+    expect(screen.getByText('Selected relationship: M-104:S-LOOP')).toBeVisible();
+  });
 });

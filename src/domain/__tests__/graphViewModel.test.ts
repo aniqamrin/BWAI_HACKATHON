@@ -27,10 +27,19 @@ describe('relationshipsToGraph', () => {
           id: relationship.id,
           source: relationship.mentorId,
           target: relationship.startupId,
-          data: { relationshipId: relationship.id },
+          data: expect.objectContaining({ relationshipId: relationship.id }),
         }),
       );
     }
+  });
+
+  it('adds readable labels to relationship edges', () => {
+    const graph = relationshipsToGraph(baselineRelationships, mentors, startups);
+    const loopPayEdge = graph.edges.find((edge) => edge.id === 'M-104:S-LOOP');
+
+    expect(loopPayEdge?.ariaLabel).toBe('Maya Chen to LoopPay, at risk relationship');
+    expect(loopPayEdge?.data?.label).toBe('Maya Chen to LoopPay, at risk relationship');
+    expect(loopPayEdge?.interactionWidth).toBeGreaterThanOrEqual(24);
   });
 
   it('applies risk, watch, and healthy classes to edges and startup nodes', () => {

@@ -8,6 +8,7 @@ export type CohortGraphNodeData = {
 
 export type CohortGraphEdgeData = {
   relationshipId: string;
+  label: string;
 };
 
 export type CohortGraphNode = Node<CohortGraphNodeData, 'cohort'>;
@@ -34,6 +35,19 @@ function uniqueConnectedIds(relationships: Relationship[], key: 'mentorId' | 'st
   return [...new Set(relationships.map((relationship) => relationship[key]))];
 }
 
+function averageIndex(ids: string[], orderedIds: string[]) {
+  if (ids.length === 0) return Number.MAX_SAFE_INTEGER;
+  const total = ids.reduce((sum, id) => {
+    const index = orderedIds.indexOf(id);
+    return sum + (index === -1 ? orderedIds.length : index);
+  }, 0);
+  return total / ids.length;
+}
+
+function readableStatus(status: HealthStatus) {
+  return status === 'at-risk' ? 'at risk' : status;
+}
+
 export function relationshipsToGraph(
   relationships: Relationship[],
   mentors: Mentor[],
@@ -46,7 +60,21 @@ export function relationshipsToGraph(
   );
 
   const connectedMentorIds = uniqueConnectedIds(validRelationships, 'mentorId');
-  const connectedStartupIds = uniqueConnectedIds(validRelationships, 'startupId');
+  const connectedStartupIds = uniqueConnectedIds(validRelationships, 'startupId').sort(
+    (firstStartupId, secondStartupId) => {
+      const firstMentors = validRelationships
+        .filter((relationship) => relationship.startupId === firstStartupId)
+        .map((relationship) => relationship.mentorId);
+      const secondMentors = validRelationships
+        .filter((relationship) => relationship.startupId === secondStartupId)
+        .map((relationship) => relationship.mentorId);
+      const averageDelta =
+        averageIndex(firstMentors, connectedMentorIds) - averageIndex(secondMentors, connectedMentorIds);
+
+      if (averageDelta !== 0) return averageDelta;
+      return firstStartupId.localeCompare(secondStartupId);
+    },
+  );
 
   const mentorNodes: CohortGraphNode[] = connectedMentorIds.map((mentorId, index) => {
     const mentor = mentorById.get(mentorId);
@@ -80,14 +108,24 @@ export function relationshipsToGraph(
     };
   });
 
-  const edges: CohortGraphEdge[] = validRelationships.map((relationship) => ({
-    id: relationship.id,
-    source: relationship.mentorId,
-    target: relationship.startupId,
-    className: `cohort-edge edge-${statusClass(relationship.status)}`,
-    data: { relationshipId: relationship.id },
-    animated: relationship.status === 'at-risk',
-  }));
+  const edges: CohortGraphEdge[] = validRelationships.map((relationship) => {
+    const mentor = mentorById.get(relationship.mentorId);
+    const startup = startupById.get(relationship.startupId);
+    const label = `${mentor?.name ?? relationship.mentorId} to ${startup?.name ?? relationship.startupId}, ${readableStatus(
+      relationship.status,
+    )} relationship`;
+
+    return {
+      id: relationship.id,
+      source: relationship.mentorId,
+      target: relationship.startupId,
+      className: `cohort-edge edge-${statusClass(relationship.status)}`,
+      data: { relationshipId: relationship.id, label },
+      ariaLabel: label,
+      interactionWidth: 28,
+      animated: relationship.status === 'at-risk',
+    };
+  });
 
   return {
     nodes: [...mentorNodes, ...startupNodes],
