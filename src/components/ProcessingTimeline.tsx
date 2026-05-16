@@ -19,7 +19,7 @@ function StepIcon({ status }: { status: ProcessingStep['status'] }) {
 
 export function ProcessingTimeline({ steps }: ProcessingTimelineProps) {
   return (
-    <section className="border border-[#9d8f77] bg-[#fffaf0] p-5">
+    <section className="transition-surface border border-[#9d8f77] bg-[#fffaf0] p-5">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-2xl font-semibold leading-none">Processing timeline</h2>
         <span className="ui-sans text-xs font-semibold uppercase tracking-[0.12em] text-[#657064]">Local pipeline</span>

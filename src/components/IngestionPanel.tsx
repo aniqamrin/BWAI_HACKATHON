@@ -70,7 +70,7 @@ export function IngestionPanel({ onRows, onError }: IngestionPanelProps) {
   }
 
   return (
-    <section className="border border-[#9d8f77] bg-[#fffaf0] p-5">
+    <section className="transition-surface border border-[#9d8f77] bg-[#fffaf0] p-5">
       <div className="mb-5">
         <div>
           <p className="ui-sans text-xs font-semibold uppercase tracking-[0.14em] text-[#6c715f]">

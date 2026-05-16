@@ -59,7 +59,7 @@ export function InsightDrawer({
     const startup = startupById.get(selectedRelationship.startupId);
 
     return (
-      <aside className="border border-[#17211c] bg-[#fffaf0] p-5 shadow-[6px_6px_0_#9d8f77]" aria-label="Relationship insight drawer">
+      <aside className="transition-surface border border-[#17211c] bg-[#fffaf0] p-5 shadow-[6px_6px_0_#9d8f77]" aria-label="Relationship insight drawer">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="ui-sans text-xs font-semibold uppercase tracking-[0.14em] text-[#6c715f]">
@@ -98,7 +98,7 @@ export function InsightDrawer({
   }
 
   return (
-    <aside className="border border-[#17211c] bg-[#fffaf0] p-5 shadow-[6px_6px_0_#9d8f77]" aria-label="Executive insight drawer">
+    <aside className="transition-surface border border-[#17211c] bg-[#fffaf0] p-5 shadow-[6px_6px_0_#9d8f77]" aria-label="Executive insight drawer">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="ui-sans text-xs font-semibold uppercase tracking-[0.14em] text-[#6c715f]">Executive review</p>

@@ -7,6 +7,7 @@ type CohortGraphProps = {
   relationships: Relationship[];
   mentors: Mentor[];
   startups: Startup[];
+  processed: boolean;
   onSelectRelationship: (relationshipId: string) => void;
 };
 
@@ -25,7 +26,7 @@ const nodeTypes: NodeTypes = {
   cohort: AtlasNode,
 };
 
-export function CohortGraph({ relationships, mentors, startups, onSelectRelationship }: CohortGraphProps) {
+export function CohortGraph({ relationships, mentors, startups, processed, onSelectRelationship }: CohortGraphProps) {
   const { nodes, edges } = useMemo(
     () => relationshipsToGraph(relationships, mentors, startups),
     [relationships, mentors, startups],
@@ -59,6 +60,10 @@ export function CohortGraph({ relationships, mentors, startups, onSelectRelation
 
   return (
     <div className="cohort-graph-frame">
+      <header className="cohort-graph-status">
+        <p className="ui-sans cohort-graph-status__eyebrow">Graph signal</p>
+        <h3>{processed ? 'Updated after raw information pass' : 'Stale signal before monthly update'}</h3>
+      </header>
       <div className="cohort-graph" aria-label="Mentor and startup relationship graph">
         <ReactFlow
           nodes={nodes}

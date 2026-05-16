@@ -57,6 +57,48 @@ export default function App() {
     setSelectedRelationshipId(null);
     setDrawerOpen(true);
   };
+  const isProcessed = phase === 'processed';
+  const rightRail = isProcessed ? (
+    <>
+      {errorMessage ? (
+        <div className="ui-sans transition-surface border border-[#8f3d34] bg-[#fff2ed] p-4 text-sm font-semibold leading-6 text-[#713026]">
+          {errorMessage}
+        </div>
+      ) : null}
+      <InsightDrawer
+        open={drawerOpen}
+        evaluation={evaluation}
+        relationships={relationships}
+        mentors={mentors}
+        startups={startups}
+        selectedRelationshipId={selectedRelationshipId}
+        onClose={handleCloseDrawer}
+        onClearSelection={handleClearSelection}
+      />
+      <ProcessingTimeline steps={displayedSteps} />
+      <IngestionPanel onRows={handleProcessRows} onError={handleFailWithMessage} />
+    </>
+  ) : (
+    <>
+      {errorMessage ? (
+        <div className="ui-sans transition-surface border border-[#8f3d34] bg-[#fff2ed] p-4 text-sm font-semibold leading-6 text-[#713026]">
+          {errorMessage}
+        </div>
+      ) : null}
+      <IngestionPanel onRows={handleProcessRows} onError={handleFailWithMessage} />
+      <ProcessingTimeline steps={displayedSteps} />
+      <InsightDrawer
+        open={drawerOpen}
+        evaluation={evaluation}
+        relationships={relationships}
+        mentors={mentors}
+        startups={startups}
+        selectedRelationshipId={selectedRelationshipId}
+        onClose={handleCloseDrawer}
+        onClearSelection={handleClearSelection}
+      />
+    </>
+  );
 
   return (
     <AppShell>
@@ -101,6 +143,7 @@ export default function App() {
               relationships={relationships}
               mentors={mentors}
               startups={startups}
+              processed={isProcessed}
               onSelectRelationship={(relationshipId) => {
                 setSelectedRelationshipId(relationshipId);
                 setDrawerOpen(true);
@@ -110,23 +153,7 @@ export default function App() {
         </section>
 
         <aside className="space-y-5 p-6">
-          {errorMessage ? (
-            <div className="ui-sans border border-[#8f3d34] bg-[#fff2ed] p-4 text-sm font-semibold leading-6 text-[#713026]">
-              {errorMessage}
-            </div>
-          ) : null}
-          <IngestionPanel onRows={handleProcessRows} onError={handleFailWithMessage} />
-          <ProcessingTimeline steps={displayedSteps} />
-          <InsightDrawer
-            open={drawerOpen}
-            evaluation={evaluation}
-            relationships={relationships}
-            mentors={mentors}
-            startups={startups}
-            selectedRelationshipId={selectedRelationshipId}
-            onClose={handleCloseDrawer}
-            onClearSelection={handleClearSelection}
-          />
+          {rightRail}
         </aside>
       </div>
     </AppShell>

@@ -30,6 +30,12 @@ textarea {
 
 button {
   cursor: pointer;
+  transition:
+    background-color 160ms ease-out,
+    border-color 160ms ease-out,
+    box-shadow 160ms ease-out,
+    color 160ms ease-out,
+    opacity 160ms ease-out;
 }
 
 .ui-sans {
@@ -43,6 +49,34 @@ button {
 .cohort-graph-frame {
   width: 100%;
   background-color: #fffaf0;
+}
+
+.cohort-graph-status {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid #9d8f77;
+  background-color: #f7f1e5;
+  padding: 18px 22px;
+}
+
+.cohort-graph-status__eyebrow {
+  color: #6c715f;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.cohort-graph-status h3 {
+  color: #17211c;
+  font-size: 1.38rem;
+  font-weight: 600;
+  line-height: 1;
+  margin: 0;
+  text-align: right;
 }
 
 .cohort-graph {
@@ -68,6 +102,12 @@ button {
   font-weight: 700;
   letter-spacing: 0.01em;
   box-shadow: 4px 4px 0 #9d8f77;
+  transition:
+    background-color 180ms ease-out,
+    border-color 180ms ease-out,
+    box-shadow 180ms ease-out,
+    color 180ms ease-out,
+    opacity 180ms ease-out;
 }
 
 .cohort-graph .cohort-node__label {
@@ -128,6 +168,10 @@ button {
 
 .cohort-graph .react-flow__edge-path {
   stroke-width: 2.5;
+  transition:
+    opacity 180ms ease-out,
+    stroke 180ms ease-out,
+    stroke-width 180ms ease-out;
 }
 
 .cohort-graph .react-flow__edge.edge-risk .react-flow__edge-path {
@@ -191,4 +235,13 @@ button {
 
 .relationship-trace__button.trace-healthy {
   border-left-color: #47594e;
+}
+
+.transition-surface {
+  transition:
+    background-color 180ms ease-out,
+    border-color 180ms ease-out,
+    box-shadow 180ms ease-out,
+    color 180ms ease-out,
+    opacity 180ms ease-out;
 }

@@ -44,6 +44,7 @@ describe('App', () => {
 
     expect(screen.getByText('Cohort Atlas')).toBeVisible();
     expect(screen.getByText('Mentor-startup relationship graph')).toBeVisible();
+    expect(screen.getByText('Stale signal before monthly update')).toBeVisible();
     expect(screen.getByRole('button', { name: /reset demo/i })).toBeVisible();
     expect(screen.getByRole('button', { name: /process raw information/i })).toBeVisible();
     expect(screen.getByRole('button', { name: /use sample csv/i })).toBeVisible();
@@ -63,6 +64,7 @@ describe('App', () => {
     expect(screen.getAllByText('85%')[0]).toBeVisible();
     expect(screen.getByText('12 monthly rows processed.')).toBeVisible();
     expect(screen.getByText('Mentor-startup relationship graph')).toBeVisible();
+    expect(screen.getByText('Updated after raw information pass')).toBeVisible();
     expect(screen.getByText('Cohort-level insight drawer')).toBeVisible();
     expect(screen.getByText('Ranked relationship evaluations')).toBeVisible();
     expect(

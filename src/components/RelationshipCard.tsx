@@ -45,7 +45,7 @@ export function RelationshipCard({
   const isDetail = variant === 'detail';
 
   return (
-    <article className={`border-l-4 bg-[#fffaf0] py-4 pl-4 pr-3 ${statusClasses[relationship.status]}`}>
+    <article className={`transition-surface border-l-4 bg-[#fffaf0] py-4 pl-4 pr-3 ${statusClasses[relationship.status]}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="ui-sans text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[#6c715f]">
