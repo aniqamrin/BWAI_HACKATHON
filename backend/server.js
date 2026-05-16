@@ -21,16 +21,23 @@ const dashboardRoutes = require('./src/routes/dashboard');
 const graphRoutes = require('./src/routes/graph');
 const investorRoutes = require('./src/routes/investors');
 const firestoreRoutes = require('./src/routes/firestore');
+<<<<<<< HEAD
 const agentRoutes = require('./src/routes/agent');
 const agentToolRoutes = require('./src/routes/agentTools');
+=======
+// New routes
+const blueprintRoutes = require('./src/routes/blueprints');
+const governanceRoutes = require('./src/routes/governance');
+const cohortRoutes = require('./src/routes/cohorts');
+const outcomeRoutes = require('./src/routes/outcomes');
+const lifecycleRoutes = require('./src/routes/lifecycle');
+>>>>>>> eb54d19a19b01d6789032297059c2a17518b5d21
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Security middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' }
-}));
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // CORS
 const allowedOrigins = process.env.NODE_ENV === 'production'
@@ -44,12 +51,11 @@ app.use(cors({
 }));
 
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
-  message: { error: 'Too many requests, please try again later.' }
-});
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, message: { error: 'Too many requests' } });
+const aiLimiter = rateLimit({ windowMs: 60 * 1000, max: 20, message: { error: 'AI rate limit exceeded' } });
 app.use('/api/', limiter);
+app.use('/api/verify', aiLimiter);
+app.use('/api/match', aiLimiter);
 
 // Body parsing
 app.use(compression());
@@ -57,17 +63,17 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Logging
-app.use(morgan('combined', {
-  stream: { write: (message) => logger.info(message.trim()) }
-}));
+app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
 
 // Health check
 app.get('/health', (req, res) => {
+  const { getStatus } = require('./src/scheduler/lifecycleScheduler');
   res.json({
     status: 'healthy',
     service: 'EcosystemOS API',
-    version: '1.0.0',
-    timestamp: new Date().toISOString()
+    version: '2.0.0',
+    timestamp: new Date().toISOString(),
+    scheduler: getStatus(),
   });
 });
 
@@ -83,13 +89,20 @@ app.use('/api/relationships', relationshipRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/graph', graphRoutes);
 app.use('/api/firestore', firestoreRoutes);
+<<<<<<< HEAD
 app.use('/api/agent', agentRoutes);
 app.use('/api/agent/tools', agentToolRoutes);
+=======
+// New routes
+app.use('/api/blueprints', blueprintRoutes);
+app.use('/api/governance', governanceRoutes);
+app.use('/api/cohorts', cohortRoutes);
+app.use('/api/outcomes', outcomeRoutes);
+app.use('/api/lifecycle', lifecycleRoutes);
+>>>>>>> eb54d19a19b01d6789032297059c2a17518b5d21
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found', path: req.originalUrl });
-});
+// 404
+app.use('*', (req, res) => res.status(404).json({ error: 'Route not found', path: req.originalUrl }));
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -100,16 +113,20 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
 async function startServer() {
   try {
     await testConnection();
     logger.info('Database connection established');
 
     app.listen(PORT, () => {
-      logger.info(`EcosystemOS API running on port ${PORT}`);
+      logger.info(`EcosystemOS API v2.0 running on port ${PORT}`);
       logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
+
+    // Start lifecycle scheduler
+    const { startScheduler } = require('./src/scheduler/lifecycleScheduler');
+    startScheduler();
+
   } catch (error) {
     logger.error('Failed to start server:', error);
     process.exit(1);
@@ -117,5 +134,4 @@ async function startServer() {
 }
 
 startServer();
-
 module.exports = app;

@@ -583,3 +583,197 @@ export const MOCK_ANALYTICS = {
     { week: "2024-01-22", engagements: 7 },
   ],
 };
+
+// ─── New Mock Data for v2 Features ───────────────────────────────────────────
+
+export const MOCK_BLUEPRINTS = [
+  {
+    id: "bp-001", name: "3-Month Growth Mentorship", description: "Structured 12-week mentorship with bi-weekly check-ins and 3 milestone checkpoints",
+    relationship_type: "mentor_startup", duration_weeks: 12, required_checkins_per_month: 2,
+    milestone_week_schedule: [4, 8, 12], health_alert_threshold: 60, escalation_threshold: 40,
+    inactivity_alert_days: 7, auto_complete_on_end_date: true, usage_count: 8, avg_outcome_rating: 4.2,
+    eligibility_rules: { startup_min_verification_score: 65, mentor_min_rating: 4.0 },
+    auto_actions: { on_inactivity: "nudge", on_health_below_threshold: "escalate", on_completion: "capture_outcome" },
+    is_active: true, created_at: "2024-01-15T00:00:00Z",
+  },
+  {
+    id: "bp-002", name: "Accelerator Enrolment", description: "Standard programme enrolment with milestone tracking and outcome capture",
+    relationship_type: "startup_programme", duration_weeks: 16, required_checkins_per_month: 4,
+    milestone_week_schedule: [4, 8, 12, 16], health_alert_threshold: 55, escalation_threshold: 35,
+    inactivity_alert_days: 5, auto_complete_on_end_date: true, usage_count: 5, avg_outcome_rating: 4.5,
+    eligibility_rules: { startup_min_verification_score: 70 },
+    auto_actions: { on_inactivity: "nudge", on_health_below_threshold: "escalate", on_completion: "capture_outcome" },
+    is_active: true, created_at: "2024-02-01T00:00:00Z",
+  },
+  {
+    id: "bp-003", name: "Seed Investment Track", description: "Investment relationship with quarterly review milestones",
+    relationship_type: "startup_investor", duration_weeks: 24, required_checkins_per_month: 1,
+    milestone_week_schedule: [8, 16, 24], health_alert_threshold: 50, escalation_threshold: 30,
+    inactivity_alert_days: 14, auto_complete_on_end_date: false, usage_count: 3, avg_outcome_rating: 3.8,
+    eligibility_rules: { startup_min_verification_score: 75 },
+    auto_actions: { on_inactivity: "nudge", on_health_below_threshold: "escalate", on_completion: "capture_outcome" },
+    is_active: true, created_at: "2024-03-01T00:00:00Z",
+  },
+];
+
+export const MOCK_GOVERNANCE_RULES = [
+  {
+    id: "gr-001", name: "Mentor Capacity Cap", description: "A mentor cannot exceed their maximum startup capacity",
+    rule_type: "capacity", scope: "platform",
+    condition_json: { field: "mentor.current_startups", operator: ">=", value: "mentor.max_startups" },
+    action_json: { type: "block", message: "Mentor has reached maximum startup capacity" },
+    is_active: true, violation_count: 3, created_at: "2024-01-10T00:00:00Z",
+  },
+  {
+    id: "gr-002", name: "Minimum Verification Score", description: "Startups must have a minimum verification score of 40",
+    rule_type: "eligibility", scope: "platform",
+    condition_json: { field: "startup.verification_score", operator: "<", value: "40" },
+    action_json: { type: "warn", message: "Startup has a low verification score — proceed with caution" },
+    is_active: true, violation_count: 7, created_at: "2024-01-10T00:00:00Z",
+  },
+  {
+    id: "gr-003", name: "Critical Risk Block", description: "Startups with critical risk cannot be matched",
+    rule_type: "eligibility", scope: "platform",
+    condition_json: { field: "startup.risk_level", operator: "==", value: "critical" },
+    action_json: { type: "block", message: "Startup is flagged as critical risk" },
+    is_active: true, violation_count: 1, created_at: "2024-01-10T00:00:00Z",
+  },
+  {
+    id: "gr-004", name: "Mentor Rating Minimum", description: "Only mentors with rating ≥ 3.5 can be matched via blueprints",
+    rule_type: "quality", scope: "platform",
+    condition_json: { field: "mentor.rating", operator: "<", value: "3.5" },
+    action_json: { type: "warn", message: "Mentor rating below recommended threshold" },
+    is_active: true, violation_count: 2, created_at: "2024-02-01T00:00:00Z",
+  },
+];
+
+export const MOCK_COHORTS = [
+  {
+    id: "cohort-001", name: "West Africa FinTech Cohort 2024", programme_name: "Pan-African Accelerator",
+    country: "Ghana", description: "Q1 2024 cohort focused on FinTech startups across West Africa",
+    startup_ids: ["s-001", "s-002", "s-003"], mentor_ids: ["m-001", "m-002"],
+    blueprint_id: "bp-001", blueprint_name: "3-Month Growth Mentorship",
+    status: "active", startup_count: 3, mentor_count: 2, relationship_count: 3,
+    approved_at: "2024-03-01T00:00:00Z", created_at: "2024-02-15T00:00:00Z",
+    match_matrix: {
+      startups: [
+        { id: "s-001", name: "PayFlow Africa", industry: "FinTech", stage: "seed" },
+        { id: "s-002", name: "AgriConnect", industry: "AgriTech", stage: "mvp" },
+        { id: "s-003", name: "EduBridge", industry: "EdTech", stage: "seed" },
+      ],
+      mentors: [
+        { id: "m-001", name: "Dr. Michael Chen", expertise: ["FinTech", "Strategy"] },
+        { id: "m-002", name: "Amara Okonkwo", expertise: ["Product", "Growth"] },
+      ],
+      scores: {
+        "s-001": { "m-001": { score: 92, reasoning: "Strong FinTech alignment" }, "m-002": { score: 74, reasoning: "Growth expertise relevant" } },
+        "s-002": { "m-001": { score: 68, reasoning: "Limited agri domain knowledge" }, "m-002": { score: 85, reasoning: "Strong product fit" } },
+        "s-003": { "m-001": { score: 72, reasoning: "Moderate alignment" }, "m-002": { score: 88, reasoning: "EdTech growth experience" } },
+      },
+      optimal_assignment: {
+        "s-001": { mentor_id: "m-001", score: 92, reasoning: "Strong FinTech alignment" },
+        "s-002": { mentor_id: "m-002", score: 85, reasoning: "Strong product fit" },
+        "s-003": { mentor_id: "m-002", score: 88, reasoning: "EdTech growth experience" },
+      },
+      computed_at: "2024-02-28T12:00:00Z",
+    },
+  },
+  {
+    id: "cohort-002", name: "East Africa HealthTech Sprint", programme_name: "Health Innovation Hub",
+    country: "Kenya", description: "6-week intensive for health technology startups",
+    startup_ids: ["s-004", "s-005"], mentor_ids: ["m-003"],
+    blueprint_id: "bp-002", blueprint_name: "Accelerator Enrolment",
+    status: "draft", startup_count: 2, mentor_count: 1, relationship_count: 0,
+    approved_at: null, created_at: "2024-04-01T00:00:00Z",
+    match_matrix: {},
+  },
+];
+
+export const MOCK_OUTCOMES = [
+  {
+    id: "out-001", relationship_id: "rel-001", startup_id: "s-001", startup_name: "PayFlow Africa",
+    mentor_name: "Dr. Michael Chen", relationship_type: "mentor_startup",
+    funding_raised_after: 250000, milestone_completion_rate: 0.83, mentor_nps: 9,
+    programme_graduation: false, overall_rating: 5, success_classification: "high",
+    key_wins: ["Secured seed round", "Launched in 3 new markets", "Team grew from 4 to 12"],
+    key_challenges: ["Regulatory compliance in Ghana"],
+    key_success_factors: ["Weekly structured check-ins", "Network introductions by mentor"],
+    learning_points: ["Early fundraising guidance is critical", "Market-specific compliance needs specialist"],
+    pattern_tags: ["high-growth", "funded", "market-expansion"],
+    ai_summary: "This mentorship achieved exceptional outcomes. The mentor's FinTech network directly contributed to the seed round close and market expansion strategy.",
+    captured_at: "2024-06-15T00:00:00Z",
+  },
+  {
+    id: "out-002", relationship_id: "rel-002", startup_id: "s-002", startup_name: "AgriConnect",
+    mentor_name: "Amara Okonkwo", relationship_type: "mentor_startup",
+    funding_raised_after: 50000, milestone_completion_rate: 0.67, mentor_nps: 7,
+    programme_graduation: false, overall_rating: 4, success_classification: "medium",
+    key_wins: ["Product launched in 2 regions", "500+ farmer signups"],
+    key_challenges: ["Customer acquisition cost too high", "Logistics complexity"],
+    key_success_factors: ["Product iteration guidance", "User research methodology"],
+    learning_points: ["B2B vs B2C model needs early clarity"],
+    pattern_tags: ["product-led", "rural-markets"],
+    ai_summary: "Good progress with product development but commercialisation challenges remain. The mentorship provided strong product guidance with some gaps in go-to-market expertise.",
+    captured_at: "2024-07-01T00:00:00Z",
+  },
+];
+
+export const MOCK_OUTCOME_INSIGHTS = {
+  total_outcomes: 12, avg_rating: 4.1, high_success_rate: 58.3,
+  top_industries: [
+    { industry: "FinTech", count: 4, avg_rating: 4.5 },
+    { industry: "HealthTech", count: 3, avg_rating: 4.0 },
+    { industry: "EdTech", count: 3, avg_rating: 3.8 },
+    { industry: "AgriTech", count: 2, avg_rating: 4.2 },
+  ],
+  ai_insights: {
+    headline: "FinTech mentorships show 40% higher funding success rates than other sectors",
+    key_insights: [
+      "Mentorships with blueprint-defined milestones complete 65% more goals on time",
+      "Startups with verification score above 70 have 2× higher programme graduation rates",
+      "West Africa cohorts raised 3× more funding post-mentorship than East Africa in this period",
+      "Relationships with weekly check-ins maintained 'good' or better health 87% of the time",
+    ],
+    patterns: ["High-frequency engagement correlates with funding success", "Geographic mentor proximity improves NPS scores"],
+    recommendations: ["Prioritise blueprint-based relationships for all new cohorts", "Expand FinTech mentor pool by 40% for next quarter"],
+  },
+};
+
+export const MOCK_LIFECYCLE_EVENTS = [
+  { id: "le-001", relationship_id: "rel-001", event_type: "health_check", triggered_by: "scheduler", payload: { health_score: 72, engagement_health: "good" }, created_at: new Date(Date.now() - 3600000).toISOString() },
+  { id: "le-002", relationship_id: "rel-002", event_type: "nudge_sent", triggered_by: "scheduler", payload: { days_inactive: 8, message: "No activity in 8 days" }, created_at: new Date(Date.now() - 7200000).toISOString() },
+  { id: "le-003", relationship_id: "rel-003", event_type: "milestone_due", triggered_by: "scheduler", payload: { milestone_title: "Mid-Point Review", due_date: "2024-05-15" }, created_at: new Date(Date.now() - 86400000).toISOString() },
+  { id: "le-004", relationship_id: "rel-001", event_type: "escalation", triggered_by: "scheduler", payload: { health_score: 38, message: "Health score below escalation threshold" }, created_at: new Date(Date.now() - 172800000).toISOString() },
+  { id: "le-005", relationship_id: "rel-002", event_type: "log_added", triggered_by: "user", payload: { activity_type: "mentor_call" }, created_at: new Date(Date.now() - 259200000).toISOString() },
+];
+
+export const MOCK_LIFECYCLE_SUMMARY = {
+  at_risk: [
+    { id: "rel-004", relationship_type: "mentor_startup", health_score: 35, engagement_health: "poor", startup_name: "EduBridge" },
+    { id: "rel-005", relationship_type: "startup_programme", health_score: 48, engagement_health: "fair", startup_name: "HealthFirst" },
+  ],
+  pending_milestones: [
+    { id: "ms-001", title: "Mid-Point Review", due_date: "2024-05-20", startup_name: "PayFlow Africa", relationship_id: "rel-001" },
+    { id: "ms-002", title: "Final Milestone", due_date: "2024-05-25", startup_name: "AgriConnect", relationship_id: "rel-002" },
+  ],
+  recent_events: MOCK_LIFECYCLE_EVENTS,
+};
+
+export const MOCK_GRAPH_DIAGNOSTICS = {
+  orphans: {
+    startups: [{ id: "s-007", name: "CloudPay", industry: "FinTech", country: "Nigeria", days_since_join: 14 }],
+    mentors: [{ id: "m-005", name: "Fatima Al-Said", expertise: ["AI/ML", "Product"], availability: "available" }],
+    total: 2,
+  },
+  overloaded: [],
+  cluster_gaps: [
+    { industry: "CleanTech", startup_count: 2, missing_entity_type: "mentor", recommendation: "Recruit CleanTech mentors — 2 startups lack mentorship coverage" },
+  ],
+  bridge_suggestions: [
+    { from_entity: { type: "startup", id: "s-007", name: "CloudPay" }, to_entity: { type: "mentor", id: "m-005", name: "Fatima Al-Said" }, reason: "Strong FinTech alignment with AI/ML mentor expertise", potential_score: 88 },
+    { from_entity: { type: "startup", id: "s-003", name: "EduBridge" }, to_entity: { type: "investor", id: "i-002", name: "AfricaGrowth Capital" }, reason: "EdTech focus aligns with investor thesis on education tech in East Africa", potential_score: 82 },
+  ],
+  governance_alerts: [
+    { rule_name: "Mentor Capacity Cap", affected_count: 1, severity: "warning" },
+  ],
+};

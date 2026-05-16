@@ -29,6 +29,23 @@
   }
 }
 
+/* Override friend's light-mode Material colors to work in dark mode */
+.bg-surface { background-color: hsl(222 47% 5%) !important; }
+.bg-surface-container-low { background-color: hsl(222 47% 8%) !important; }
+.bg-surface-container-lowest { background-color: hsl(222 47% 6%) !important; }
+.bg-surface-container { background-color: hsl(222 47% 10%) !important; }
+.text-on-surface { color: hsl(210 40% 98%) !important; }
+.text-on-surface-variant { color: hsl(215 20% 65%) !important; }
+.text-primary { color: #a78bfa !important; }
+.bg-primary-container { background-color: #7C3AED !important; }
+.text-on-primary { color: #ffffff !important; }
+.text-on-primary-container { color: #e9d5ff !important; }
+.border-outline-variant { border-color: rgba(255,255,255,0.1) !important; }
+.bg-inverse-surface { background-color: hsl(222 47% 12%) !important; }
+.bg-white { background-color: hsl(222 47% 8%) !important; }
+.shadow-\[0px_4px_20px_rgba\(31\,41\,55\,0\.08\)\] { box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important; }
+.shadow-\[0px_32px_80px_rgba\(31\,41\,55\,0\.12\)\] { box-shadow: 0 32px 80px rgba(0,0,0,0.5) !important; }
+
 @layer base {
   * {
     @apply border-border;

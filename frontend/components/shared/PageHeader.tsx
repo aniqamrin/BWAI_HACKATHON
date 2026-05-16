@@ -8,10 +8,12 @@ interface PageHeaderProps {
   description?: string;
   icon?: LucideIcon;
   actions?: React.ReactNode;
+  action?: React.ReactNode;
   badge?: string;
 }
 
-export default function PageHeader({ title, description, icon: Icon, actions, badge }: PageHeaderProps) {
+export default function PageHeader({ title, description, icon: Icon, actions, action, badge }: PageHeaderProps) {
+  const rightContent = actions || action;
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
@@ -39,7 +41,7 @@ export default function PageHeader({ title, description, icon: Icon, actions, ba
           )}
         </div>
       </div>
-      {actions && <div className="flex items-center gap-3">{actions}</div>}
+      {rightContent && <div className="flex items-center gap-3">{rightContent}</div>}
     </motion.div>
   );
 }

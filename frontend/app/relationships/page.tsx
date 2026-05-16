@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { GitBranch, Brain, Activity, Plus, Filter } from "lucide-react";
+import { GitBranch, Brain, Activity, Plus, Filter, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -182,20 +183,27 @@ export default function RelationshipsPage() {
                           </span>
                           <span className="text-xs text-muted-foreground">{timeAgo(rel.created_at)}</span>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => handleAnalyzeHealth(rel.id)}
-                          disabled={analyzingId === rel.id}
-                        >
-                          {analyzingId === rel.id ? (
-                            <div className="w-3 h-3 rounded-full border border-primary/30 border-t-primary animate-spin mr-1" />
-                          ) : (
-                            <Activity className="w-3 h-3 mr-1" />
-                          )}
-                          Analyze Health
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleAnalyzeHealth(rel.id)}
+                            disabled={analyzingId === rel.id}
+                          >
+                            {analyzingId === rel.id ? (
+                              <div className="w-3 h-3 rounded-full border border-primary/30 border-t-primary animate-spin mr-1" />
+                            ) : (
+                              <Activity className="w-3 h-3 mr-1" />
+                            )}
+                            Analyze Health
+                          </Button>
+                          <Link href={`/relationships/${rel.id}`}>
+                            <Button variant="outline" size="sm" className="h-7 text-xs">
+                              View <ChevronRight className="w-3 h-3 ml-1" />
+                            </Button>
+                          </Link>
+                        </div>
                       </div>
 
                       {rel.ai_reasoning && (

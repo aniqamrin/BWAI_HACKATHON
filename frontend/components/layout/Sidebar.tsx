@@ -5,7 +5,12 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard, Network, Users, GraduationCap, Briefcase,
+<<<<<<< HEAD
   Building2, GitBranch, BarChart3, Settings, LogOut, Zap, Shield, Sparkles, Activity, Bot
+=======
+  Building2, GitBranch, BarChart3, LogOut, Zap, Shield, Sparkles, Activity,
+  BookTemplate, Trophy, Layers, ShieldCheck
+>>>>>>> eb54d19a19b01d6789032297059c2a17518b5d21
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +25,13 @@ const navItems = [
   { href: "/programmes", label: "Programmes", icon: Building2 },
   { href: "/relationships", label: "Relationships", icon: GitBranch },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
+];
+
+const ecosystemOsItems = [
+  { href: "/blueprints", label: "Blueprints", icon: BookTemplate },
+  { href: "/governance", label: "Governance", icon: ShieldCheck },
+  { href: "/cohorts", label: "Cohorts", icon: Layers },
+  { href: "/outcomes", label: "Outcomes", icon: Trophy },
   { href: "/analysis", label: "Behavioral Signals", icon: Activity },
   { href: "/agent", label: "AI Agent", icon: Bot },
 ];
@@ -41,7 +53,7 @@ export default function Sidebar() {
         </div>
         <div>
           <p className="text-sm font-bold gradient-text">EcosystemOS</p>
-          <p className="text-[10px] text-muted-foreground">AI Platform</p>
+          <p className="text-[10px] text-muted-foreground">Relationship Intelligence</p>
         </div>
       </div>
 
@@ -66,6 +78,38 @@ export default function Sidebar() {
                   <motion.div
                     layoutId="activeIndicator"
                     className="ml-auto w-1.5 h-1.5 rounded-full bg-primary"
+                  />
+                )}
+              </motion.div>
+            </Link>
+          );
+        })}
+
+        {/* EcosystemOS v2 features */}
+        <div className="pt-4 pb-2 px-3">
+          <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Zap className="w-3 h-3" /> Relationship OS
+          </p>
+        </div>
+        {ecosystemOsItems.map((item) => {
+          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          return (
+            <Link key={item.href} href={item.href}>
+              <motion.div
+                whileHover={{ x: 2 }}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer",
+                  active
+                    ? "bg-violet-500/15 text-violet-400 border border-violet-500/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                )}
+              >
+                <item.icon className={cn("w-4 h-4", active && "text-violet-400")} />
+                {item.label}
+                {active && (
+                  <motion.div
+                    layoutId="activeIndicatorOS"
+                    className="ml-auto w-1.5 h-1.5 rounded-full bg-violet-400"
                   />
                 )}
               </motion.div>

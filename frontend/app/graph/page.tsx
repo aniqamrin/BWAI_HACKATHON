@@ -8,12 +8,115 @@ import ReactFlow, {
   BackgroundVariant, Panel
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { Network, Briefcase, GraduationCap, Building2, Users, RefreshCw } from "lucide-react";
+import { Network, Briefcase, GraduationCap, Building2, Users, RefreshCw, AlertTriangle, UserX, Zap, GitBranch, ChevronDown, ChevronUp } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { graphApi } from "@/lib/api";
+
+const DiagnosticsPanel = ({ diagnostics }: { diagnostics: any }) => {
+  const [open, setOpen] = useState<string | null>("orphans");
+  if (!diagnostics) return null;
+
+  const sections = [
+    {
+      id: "orphans", label: "Orphan Entities", icon: UserX, color: "text-red-400",
+      count: diagnostics.orphans?.total || 0,
+      content: (
+        <div className="space-y-1">
+          {diagnostics.orphans?.startups?.map((s: any) => (
+            <div key={s.id} className="flex items-center gap-2 text-xs">
+              <Briefcase className="w-3 h-3 text-violet-400 flex-shrink-0" />
+              <span>{s.name}</span>
+              <span className="ml-auto text-muted-foreground">{Math.floor(s.days_since_join || 0)}d</span>
+            </div>
+          ))}
+          {diagnostics.orphans?.mentors?.map((m: any) => (
+            <div key={m.id} className="flex items-center gap-2 text-xs">
+              <GraduationCap className="w-3 h-3 text-green-400 flex-shrink-0" />
+              <span>{m.name}</span>
+              <span className="ml-auto text-green-400 text-[10px]">available</span>
+            </div>
+          ))}
+        </div>
+      )
+    },
+    {
+      id: "bridges", label: "Bridge Suggestions", icon: GitBranch, color: "text-violet-400",
+      count: diagnostics.bridge_suggestions?.length || 0,
+      content: (
+        <div className="space-y-2">
+          {diagnostics.bridge_suggestions?.map((b: any, i: number) => (
+            <div key={i} className="p-2 rounded-lg bg-violet-500/8 border border-violet-500/15 text-xs">
+              <div className="flex items-center gap-1 mb-1">
+                <span className="font-medium">{b.from_entity?.name}</span>
+                <span className="text-muted-foreground">→</span>
+                <span className="font-medium text-violet-400">{b.to_entity?.name}</span>
+                <span className="ml-auto text-violet-400 font-bold">{b.potential_score}%</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">{b.reason}</p>
+            </div>
+          ))}
+        </div>
+      )
+    },
+    {
+      id: "gaps", label: "Cluster Gaps", icon: AlertTriangle, color: "text-yellow-400",
+      count: diagnostics.cluster_gaps?.length || 0,
+      content: (
+        <div className="space-y-2">
+          {diagnostics.cluster_gaps?.map((g: any, i: number) => (
+            <div key={i} className="text-xs p-2 rounded-lg bg-yellow-500/8 border border-yellow-500/15">
+              <p className="font-medium text-yellow-400 mb-0.5">{g.industry}</p>
+              <p className="text-muted-foreground text-[10px]">{g.recommendation}</p>
+            </div>
+          ))}
+        </div>
+      )
+    },
+    {
+      id: "overloaded", label: "Overloaded Mentors", icon: Zap, color: "text-orange-400",
+      count: diagnostics.overloaded?.length || 0,
+      content: (
+        <div className="space-y-1">
+          {diagnostics.overloaded?.map((m: any) => (
+            <div key={m.id} className="flex items-center gap-2 text-xs">
+              <GraduationCap className="w-3 h-3 text-orange-400" />
+              <span>{m.name}</span>
+              <span className="ml-auto text-orange-400 font-bold">{m.current_startups}/{m.max_startups}</span>
+            </div>
+          ))}
+          {!diagnostics.overloaded?.length && <p className="text-xs text-muted-foreground">None — capacity is healthy</p>}
+        </div>
+      )
+    },
+  ];
+
+  return (
+    <div className="w-72 flex-shrink-0 space-y-2">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1 mb-3">Graph Diagnostics</p>
+      {sections.map(s => (
+        <div key={s.id} className="rounded-xl border border-white/8 bg-white/3 overflow-hidden">
+          <button
+            onClick={() => setOpen(open === s.id ? null : s.id)}
+            className="w-full flex items-center gap-2 p-3 hover:bg-white/5 transition-colors"
+          >
+            <s.icon className={`w-3.5 h-3.5 ${s.color}`} />
+            <span className="text-xs font-medium flex-1 text-left">{s.label}</span>
+            <span className={`text-xs font-bold ${s.count > 0 ? s.color : "text-muted-foreground"}`}>{s.count}</span>
+            {open === s.id ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+          </button>
+          {open === s.id && s.count > 0 && (
+            <div className="px-3 pb-3 border-t border-white/5 pt-2">
+              {s.content}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const nodeColors: Record<string, { bg: string; border: string; text: string }> = {
   startup: { bg: "rgba(124,58,237,0.15)", border: "rgba(124,58,237,0.5)", text: "#a78bfa" },
@@ -107,12 +210,15 @@ export default function GraphPage() {
   const [loading, setLoading] = useState(true);
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [stats, setStats] = useState({ startups: 0, mentors: 0, programmes: 0, investors: 0, relationships: 0 });
+  const [diagnostics, setDiagnostics] = useState<any>(null);
 
   const loadGraph = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await graphApi.getNetwork() as any;
-      const raw = res.data;
+      const [res, diagRes] = await Promise.all([graphApi.getNetwork(), graphApi.getDiagnostics()]) as any[];
+      setDiagnostics((diagRes as any).data);
+      const res2 = res;
+      const raw = res2.data;
 
       const positioned = layoutNodes(raw.nodes || []);
       setNodes(positioned);
@@ -167,6 +273,9 @@ export default function GraphPage() {
         }
       />
 
+      <div className="flex gap-4 items-start">
+        {/* Main graph area */}
+        <div className="flex-1 min-w-0">
       {/* Legend */}
       <div className="flex items-center gap-4 mb-4 flex-wrap">
         {Object.entries(nodeColors).map(([type, colors]) => (
@@ -254,6 +363,10 @@ export default function GraphPage() {
           </ReactFlow>
         )}
       </motion.div>
+        </div>
+        {/* Diagnostics sidebar */}
+        <DiagnosticsPanel diagnostics={diagnostics} />
+      </div>
     </DashboardLayout>
   );
 }

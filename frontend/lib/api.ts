@@ -3,6 +3,9 @@ import {
   MOCK_PROGRAMMES, MOCK_RELATIONSHIPS, MOCK_DASHBOARD,
   MOCK_GRAPH, MOCK_MENTOR_MATCHES, MOCK_PROGRAMME_MATCHES,
   MOCK_VERIFICATION, MOCK_ANALYTICS,
+  MOCK_BLUEPRINTS, MOCK_GOVERNANCE_RULES, MOCK_COHORTS,
+  MOCK_OUTCOMES, MOCK_OUTCOME_INSIGHTS, MOCK_LIFECYCLE_EVENTS,
+  MOCK_LIFECYCLE_SUMMARY, MOCK_GRAPH_DIAGNOSTICS,
 } from "./mockData";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -119,8 +122,22 @@ function mockHandler(endpoint: string, options: ApiOptions = {}): unknown {
     const parts = endpoint.split("/");
     const id = parts[3];
     if (parts[4] === undefined) {
-      const r = MOCK_RELATIONSHIPS.find(r => r.id === id);
-      return ok({ ...r, engagement_logs: [] });
+      const r = MOCK_RELATIONSHIPS.find(r => r.id === id) || MOCK_RELATIONSHIPS[0];
+      const mockMilestones = [
+        { id: "ms-1", title: "Initial Check-in & Goal Setting", due_at: "2024-03-01T00:00:00Z", status: "completed", completed_at: "2024-03-02T00:00:00Z", notes: "Strong start — clear goals set for Q1. Both parties aligned on priorities." },
+        { id: "ms-2", title: "Mid-Point Review", due_at: "2024-04-15T00:00:00Z", status: "completed", completed_at: "2024-04-14T00:00:00Z", notes: "On track. 2 of 3 goals achieved. Product pivot discussed and approved." },
+        { id: "ms-3", title: "Final Milestone & Graduation", due_at: "2024-06-01T00:00:00Z", status: "pending", completed_at: null, notes: null },
+      ];
+      const mockSignals = {
+        avg_response_latency_hours: 4.2,
+        meeting_commitment_ratio: 0.87,
+        milestone_completion_rate: 0.67,
+        next_action_followthrough_rate: 0.75,
+        engagement_velocity: 1.2,
+        composite_index: 78,
+        computed_at: new Date(Date.now() - 3600000).toISOString(),
+      };
+      return ok({ ...r, engagement_logs: [], milestones: mockMilestones, behavioral_signals: mockSignals, lifecycle_events: MOCK_LIFECYCLE_EVENTS.slice(0, 4) });
     }
   }
   if (endpoint === "/api/relationships/create" && method === "POST") {
@@ -143,6 +160,54 @@ function mockHandler(endpoint: string, options: ApiOptions = {}): unknown {
 
   // GRAPH
   if (endpoint === "/api/graph/network") return ok(MOCK_GRAPH);
+  if (endpoint === "/api/graph/diagnostics") return ok(MOCK_GRAPH_DIAGNOSTICS);
+
+  // BLUEPRINTS
+  if (endpoint.startsWith("/api/blueprints") && method === "GET") {
+    if (endpoint === "/api/blueprints") return ok({ blueprints: MOCK_BLUEPRINTS, total: MOCK_BLUEPRINTS.length });
+    const id = endpoint.split("/")[3];
+    return ok({ ...MOCK_BLUEPRINTS.find(b => b.id === id) || MOCK_BLUEPRINTS[0], relationships: [] });
+  }
+  if (endpoint === "/api/blueprints/create" && method === "POST") {
+    return ok({ id: "bp-" + Date.now(), ...b, usage_count: 0, created_at: new Date().toISOString() }, "Blueprint created");
+  }
+  if (endpoint.includes("/api/blueprints/") && method === "PUT") {
+    return ok({ ...b, updated_at: new Date().toISOString() }, "Blueprint updated");
+  }
+
+  // GOVERNANCE
+  if (endpoint === "/api/governance/rules" && method === "GET") return ok({ rules: MOCK_GOVERNANCE_RULES, total: MOCK_GOVERNANCE_RULES.length });
+  if (endpoint === "/api/governance/rules/create" && method === "POST") return ok({ id: "gr-" + Date.now(), ...b, violation_count: 0, is_active: true }, "Rule created");
+  if (endpoint === "/api/governance/validate" && method === "POST") return ok({ violations: [], warnings: [], passed: true }, "Validation passed");
+  if (endpoint === "/api/governance/violations") return ok({ violations: MOCK_LIFECYCLE_EVENTS.filter((e: any) => e.event_type === "governance_violation") });
+
+  // COHORTS
+  if (endpoint.startsWith("/api/cohorts") && method === "GET") {
+    if (endpoint === "/api/cohorts") return ok({ cohorts: MOCK_COHORTS, total: MOCK_COHORTS.length });
+    const parts = endpoint.split("/");
+    const id = parts[3];
+    if (parts[4] === "matrix") return ok({ match_matrix: MOCK_COHORTS[0].match_matrix, status: "matching" });
+    return ok({ ...MOCK_COHORTS.find(c => c.id === id) || MOCK_COHORTS[0], startups: [], mentors: [], relationships: [] });
+  }
+  if (endpoint === "/api/cohorts/create" && method === "POST") return ok({ id: "cohort-" + Date.now(), ...b, status: "draft", match_matrix: {}, created_at: new Date().toISOString() }, "Cohort created");
+  if (endpoint.endsWith("/run-matching") && method === "POST") return ok(MOCK_COHORTS[0].match_matrix, "Matching completed");
+  if (endpoint.endsWith("/approve") && method === "POST") return ok({ created_count: 3, relationships: [] }, "3 relationships created");
+  if (endpoint.endsWith("/update-members") && method === "PATCH") return ok({ ...b }, "Members updated");
+
+  // OUTCOMES
+  if (endpoint === "/api/outcomes" && method === "GET") return ok({ outcomes: MOCK_OUTCOMES, total: MOCK_OUTCOMES.length });
+  if (endpoint === "/api/outcomes/insights") return ok(MOCK_OUTCOME_INSIGHTS);
+  if (endpoint === "/api/outcomes/capture" && method === "POST") return ok({ id: "out-" + Date.now(), ...b, captured_at: new Date().toISOString() }, "Outcome captured");
+  if (endpoint.startsWith("/api/outcomes/")) return ok(MOCK_OUTCOMES[0] || null);
+
+  // LIFECYCLE
+  if (endpoint === "/api/lifecycle/summary") return ok(MOCK_LIFECYCLE_SUMMARY);
+  if (endpoint === "/api/lifecycle/status") return ok({ enabled: true, running: false, last_run: new Date(Date.now() - 3600000).toISOString(), last_stats: { nudges: 2, escalations: 1, health_checks: 5 }, next_run: "Every 6 hours" });
+  if (endpoint === "/api/lifecycle/run" && method === "POST") return ok({ nudges: 2, escalations: 0, auto_completed: 1, health_checks: 8, errors: 0 }, "Lifecycle scan completed");
+
+  // Relationships extended
+  if (endpoint.endsWith("/timeline") && method === "GET") return ok({ timeline: MOCK_LIFECYCLE_EVENTS });
+  if (endpoint.includes("/milestone/") && endpoint.endsWith("/complete") && method === "POST") return ok({ status: "completed", completed_at: new Date().toISOString() }, "Milestone completed");
 
   // AGENT — mock tool execution over local mock data
   if (endpoint === "/api/agent/chat" && method === "POST") {
@@ -353,8 +418,8 @@ export const matchApi = {
 // ─── Relationships ────────────────────────────────────────────────────────────
 export const relationshipsApi = {
   getAll: (params?: Record<string, string>) => {
-    const query = params ? "?" + new URLSearchParams(params).toString() : "";
-    return apiRequest(`/api/relationships${query}`);
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return apiRequest(`/api/relationships${qs}`);
   },
   getById: (id: string) => apiRequest(`/api/relationships/${id}`),
   create: (data: unknown) =>
@@ -365,6 +430,9 @@ export const relationshipsApi = {
     apiRequest(`/api/relationships/${id}/log`, { method: "POST", body: data }),
   updateStatus: (id: string, status: string) =>
     apiRequest(`/api/relationships/${id}/status`, { method: "PATCH", body: { status } }),
+  getTimeline: (id: string) => apiRequest(`/api/relationships/${id}/timeline`),
+  completeMilestone: (relId: string, milestoneId: string, notes?: string) =>
+    apiRequest(`/api/relationships/${relId}/milestone/${milestoneId}/complete`, { method: "POST", body: { notes } }),
 };
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -377,6 +445,54 @@ export const dashboardApi = {
 // ─── Graph ────────────────────────────────────────────────────────────────────
 export const graphApi = {
   getNetwork: () => apiRequest("/api/graph/network"),
+  getDiagnostics: () => apiRequest("/api/graph/diagnostics"),
+};
+
+// ─── Blueprints ───────────────────────────────────────────────────────────────
+export const blueprintsApi = {
+  getAll: (params?: Record<string, string>) => {
+    const qs = params ? "?" + new URLSearchParams(params).toString() : "";
+    return apiRequest(`/api/blueprints${qs}`);
+  },
+  getById: (id: string) => apiRequest(`/api/blueprints/${id}`),
+  create: (data: unknown) => apiRequest("/api/blueprints/create", { method: "POST", body: data }),
+  update: (id: string, data: unknown) => apiRequest(`/api/blueprints/${id}`, { method: "PUT", body: data }),
+  delete: (id: string) => apiRequest(`/api/blueprints/${id}`, { method: "DELETE" }),
+};
+
+// ─── Governance ───────────────────────────────────────────────────────────────
+export const governanceApi = {
+  getRules: () => apiRequest("/api/governance/rules"),
+  createRule: (data: unknown) => apiRequest("/api/governance/rules/create", { method: "POST", body: data }),
+  updateRule: (id: string, data: unknown) => apiRequest(`/api/governance/rules/${id}`, { method: "PUT", body: data }),
+  validate: (data: unknown) => apiRequest("/api/governance/validate", { method: "POST", body: data }),
+  getViolations: () => apiRequest("/api/governance/violations"),
+};
+
+// ─── Cohorts ──────────────────────────────────────────────────────────────────
+export const cohortsApi = {
+  getAll: () => apiRequest("/api/cohorts"),
+  getById: (id: string) => apiRequest(`/api/cohorts/${id}`),
+  create: (data: unknown) => apiRequest("/api/cohorts/create", { method: "POST", body: data }),
+  runMatching: (id: string) => apiRequest(`/api/cohorts/${id}/run-matching`, { method: "POST" }),
+  approve: (id: string) => apiRequest(`/api/cohorts/${id}/approve`, { method: "POST" }),
+  getMatrix: (id: string) => apiRequest(`/api/cohorts/${id}/matrix`),
+  updateMembers: (id: string, data: unknown) => apiRequest(`/api/cohorts/${id}/update-members`, { method: "PATCH", body: data }),
+};
+
+// ─── Outcomes ─────────────────────────────────────────────────────────────────
+export const outcomesApi = {
+  getAll: () => apiRequest("/api/outcomes"),
+  getByRelationship: (relationshipId: string) => apiRequest(`/api/outcomes/${relationshipId}`),
+  capture: (data: unknown) => apiRequest("/api/outcomes/capture", { method: "POST", body: data }),
+  getInsights: () => apiRequest("/api/outcomes/insights"),
+};
+
+// ─── Lifecycle ────────────────────────────────────────────────────────────────
+export const lifecycleApi = {
+  getSummary: () => apiRequest("/api/lifecycle/summary"),
+  getStatus: () => apiRequest("/api/lifecycle/status"),
+  run: () => apiRequest("/api/lifecycle/run", { method: "POST" }),
 };
 
 export default apiRequest;
