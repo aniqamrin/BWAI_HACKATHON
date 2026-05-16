@@ -262,15 +262,15 @@ export function EcosystemCommandCenter() {
   }
 
   return (
-    <main className="min-h-screen bg-[#ede4d1] px-5 py-5 text-[#17211c]">
-      <div className="mx-auto max-w-[1540px] border border-[#17211c] bg-[#f7f1e5] shadow-[8px_8px_0_#17211c]">
-        <header className="grid grid-cols-[minmax(0,1fr)_420px] border-b border-[#17211c]">
-          <div className="px-7 py-6">
+    <main className="min-h-screen overflow-x-hidden bg-[#ede4d1] px-3 py-4 text-[#17211c] sm:px-5 sm:py-5">
+      <div className="mx-auto w-full max-w-[1540px] min-w-0 border border-[#17211c] bg-[#f7f1e5] shadow-[6px_6px_0_#17211c] sm:shadow-[8px_8px_0_#17211c]">
+        <header className="grid min-w-0 grid-cols-1 border-b border-[#17211c] xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="min-w-0 px-5 py-5 sm:px-7 sm:py-6">
             <p className="ui-sans text-[0.7rem] font-bold uppercase tracking-[0.18em] text-[#657064]">
               Cohort Atlas experiment
             </p>
-            <div className="mt-3 flex items-end gap-4">
-              <h1 className="text-5xl font-semibold leading-none">Relationship OS</h1>
+            <div className="mt-3 flex min-w-0 flex-wrap items-end gap-3 sm:gap-4">
+              <h1 className="text-4xl font-semibold leading-none sm:text-5xl">Relationship OS</h1>
               <span className="ui-sans mb-1 border border-[#17211c] bg-[#fffaf0] px-3 py-1 text-xs font-bold uppercase tracking-[0.12em]">
                 Prototype v2
               </span>
@@ -280,16 +280,16 @@ export function EcosystemCommandCenter() {
               signals so programme teams get relationship recommendations without asking everyone to fill another form.
             </p>
           </div>
-          <div className="border-l border-[#17211c] bg-[#fffaf0] px-6 py-6">
+          <div className="min-w-0 border-t border-[#17211c] bg-[#fffaf0] px-5 py-5 sm:px-6 sm:py-6 xl:border-l xl:border-t-0">
             <p className="ui-sans text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Operating promise</p>
-            <p className="mt-3 text-2xl font-semibold leading-tight">
+            <p className="mt-3 text-xl font-semibold leading-tight sm:text-2xl">
               Automate discovery and evidence. Keep humans on judgement and governance.
             </p>
           </div>
         </header>
 
-        <section className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-5 border-b border-[#17211c] bg-[#fbf4e7] px-7 py-5">
-          <div>
+        <section className="grid min-w-0 grid-cols-1 items-end gap-4 border-b border-[#17211c] bg-[#fbf4e7] px-5 py-5 lg:grid-cols-[minmax(0,1fr)_auto] sm:px-7">
+          <div className="min-w-0">
             <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Starting point</p>
             <div className="mt-2 flex min-h-[54px] items-center gap-3 border border-[#17211c] bg-[#fffaf0] px-4">
               <Search className="h-5 w-5 text-[#405047]" aria-hidden />
@@ -302,7 +302,7 @@ export function EcosystemCommandCenter() {
             </div>
           </div>
           <button
-            className="ui-sans flex h-[54px] items-center gap-2 border border-[#17211c] bg-[#17211c] px-5 text-sm font-bold uppercase tracking-[0.08em] text-[#fffaf0] shadow-[4px_4px_0_#9d8f77]"
+            className="ui-sans flex min-h-[54px] w-full items-center justify-center gap-2 border border-[#17211c] bg-[#17211c] px-5 py-3 text-sm font-bold uppercase tracking-[0.08em] text-[#fffaf0] shadow-[4px_4px_0_#9d8f77] lg:w-auto"
             onClick={() => {
               setEvidenceProcessed(true);
               setSelectedActionId('programme');
@@ -314,32 +314,32 @@ export function EcosystemCommandCenter() {
         </section>
 
         {evidenceProcessed ? (
-          <section className="grid grid-cols-[minmax(0,1fr)_140px_160px_180px] border-b border-[#17211c] bg-[#dce6d8]">
-            <div className="px-7 py-4">
+          <section className="grid min-w-0 grid-cols-2 border-b border-[#17211c] bg-[#dce6d8] md:grid-cols-[minmax(0,1fr)_120px_150px_160px]">
+            <div className="col-span-2 border-b border-[#9d8f77] px-5 py-4 md:col-span-1 md:border-b-0 sm:px-7">
               <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#45624f]">
                 Relationship evidence ready
               </p>
               <p className="ui-sans mt-1 text-sm font-bold text-[#17211c]">Evidence processed from 8 sources.</p>
             </div>
-            <div className="border-l border-[#9d8f77] px-4 py-4">
+            <div className="border-r border-[#9d8f77] px-4 py-4 md:border-l">
               <p className="text-3xl font-semibold leading-none">18</p>
               <p className="ui-sans mt-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#45624f]">
                 Signals
               </p>
             </div>
-            <div className="border-l border-[#9d8f77] px-4 py-4">
+            <div className="px-4 py-4 md:border-l">
               <p className="ui-sans text-sm font-bold text-[#17211c]">{approvedCount} approved</p>
               <p className="ui-sans mt-1 text-xs leading-5 text-[#45624f]">Governed links</p>
             </div>
-            <div className="border-l border-[#9d8f77] px-4 py-4">
+            <div className="col-span-2 border-t border-[#9d8f77] px-4 py-4 md:col-span-1 md:border-l md:border-t-0">
               <p className="ui-sans text-sm font-bold text-[#17211c]">{evidenceRequestCount} evidence request</p>
               <p className="ui-sans mt-1 text-xs leading-5 text-[#45624f]">Manual follow-up</p>
             </div>
           </section>
         ) : null}
 
-        <section className="grid grid-cols-[310px_minmax(0,1fr)_390px]">
-          <aside className="border-r border-[#17211c] bg-[#fbf4e7]">
+        <section className="grid min-w-0 grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[310px_minmax(0,1fr)_390px]">
+          <aside className="min-w-0 border-b border-[#17211c] bg-[#fbf4e7] xl:border-b-0 xl:border-r">
             <div className="border-b border-[#17211c] px-5 py-5">
               <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Actor profile</p>
               <h2 className="mt-2 text-3xl font-semibold leading-none">PulseGrid</h2>
@@ -374,7 +374,7 @@ export function EcosystemCommandCenter() {
             </div>
           </aside>
 
-          <section className="p-5">
+          <section className="min-w-0 p-4 sm:p-5">
             <RelationshipMap
               evidenceProcessed={evidenceProcessed}
               approvedCount={approvedCount}
@@ -382,12 +382,12 @@ export function EcosystemCommandCenter() {
             />
           </section>
 
-          <aside className="border-l border-[#17211c] bg-[#fbf4e7]">
+          <aside className="min-w-0 border-t border-[#17211c] bg-[#fbf4e7] xl:col-span-2 2xl:col-span-1 2xl:border-l 2xl:border-t-0">
             <div className="border-b border-[#17211c] px-5 py-5">
               <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">AI action queue</p>
               <h2 className="mt-2 text-3xl font-semibold leading-none">Relationships to create</h2>
             </div>
-            <div className="divide-y divide-[#cab99d]">
+            <div className="grid divide-y divide-[#cab99d] lg:grid-cols-2 lg:divide-x lg:divide-y-0 2xl:block 2xl:divide-x-0 2xl:divide-y">
               {relationshipActions.map((action) => (
                 <article key={action.title} className="bg-[#fffaf0] px-5 py-4">
                   <div className="flex items-start justify-between gap-3">
@@ -446,13 +446,13 @@ export function EcosystemCommandCenter() {
           </aside>
         </section>
 
-        <section className="grid grid-cols-2 border-t border-[#17211c]">
-          <div className="border-r border-[#17211c]">
+        <section className="grid min-w-0 grid-cols-1 border-t border-[#17211c] xl:grid-cols-2">
+          <div className="border-b border-[#17211c] xl:border-b-0 xl:border-r">
             <div className="flex items-center gap-3 border-b border-[#17211c] bg-[#f7f1e5] px-5 py-4">
               <Building2 className="h-5 w-5" aria-hidden />
               <div>
                 <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">External enrichment</p>
-                <h2 className="text-2xl font-semibold leading-none">What AI reads after LinkedIn</h2>
+                <h2 className="text-xl font-semibold leading-tight sm:text-2xl">What AI reads after LinkedIn</h2>
               </div>
             </div>
             {externalSignals.map((signal) => (
@@ -465,7 +465,7 @@ export function EcosystemCommandCenter() {
               <Users2 className="h-5 w-5" aria-hidden />
               <div>
                 <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Internal signal fabric</p>
-                <h2 className="text-2xl font-semibold leading-none">What the product collects quietly</h2>
+                <h2 className="text-xl font-semibold leading-tight sm:text-2xl">What the product collects quietly</h2>
               </div>
             </div>
             {internalSignals.map((signal) => (
@@ -474,8 +474,8 @@ export function EcosystemCommandCenter() {
           </div>
         </section>
 
-        <section className="grid grid-cols-[minmax(0,1fr)_340px] border-t border-[#17211c] bg-[#17211c] text-[#fffaf0]">
-          <div className="px-7 py-6">
+        <section className="grid min-w-0 grid-cols-1 border-t border-[#17211c] bg-[#17211c] text-[#fffaf0] xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="px-5 py-6 sm:px-7">
             <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#d9cfbd]">Conclusion layer</p>
             <h2 className="mt-2 text-3xl font-semibold leading-tight">
               The system recommends a relationship bundle, not a single match.
@@ -485,7 +485,7 @@ export function EcosystemCommandCenter() {
               route the partner pathway to admin review because one pilot owner is missing.
             </p>
           </div>
-          <div className="grid grid-cols-2 border-l border-[#657064]">
+          <div className="grid grid-cols-2 border-t border-[#657064] xl:border-l xl:border-t-0">
             <div className="border-r border-[#657064] px-5 py-6">
               <UserCheck className="h-5 w-5" aria-hidden />
               <p className="mt-4 text-4xl font-semibold leading-none">74%</p>
