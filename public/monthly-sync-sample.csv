@@ -1,0 +1,13 @@
+mentor_id,startup_id,hours_synced,milestones_completed,blockers_identified,founder_confidence_score,mentor_confidence_score
+M-104,S-LOOP,7,Drafted GTM strategy and completed pricing test,Enterprise buyer intro still blocked by unclear champion,8,8
+M-207,S-ORBIT,6,Refined investor narrative and resolved pilot objections,Needs stronger proof around deployment timeline,8,9
+M-116,S-NORTH,4,Reviewed onboarding map,Next milestone owner unclear and founder follow-through uneven,5,6
+M-319,S-KIN,8,Closed first design partner and reviewed renewal plan,No material blocker identified this month,9,9
+M-058,S-PULSE,5,Completed technical risk review,Integration blocker escalated to product mentor,6,7
+M-104,S-VAULT,6,Clarified ICP and revised sales sequence,Pipeline quality still mixed,7,8
+M-221,S-HELIOS,3,Reviewed hiring plan,Low sync hours and founder confidence dipped after missed sprint,4,5
+M-207,S-FERN,7,Completed retention analysis and success metrics,Needs clearer customer expansion owner,8,8
+M-410,S-LOOP,5,Reviewed enterprise proposal draft,Procurement objection still unresolved,7,7
+M-319,S-NOVA,8,Finalized launch checklist and demo narrative,No blocker identified beyond scheduling,9,8
+M-058,S-HELIOS,6,Rebuilt sprint plan with measurable owner,Technical blocker reduced but not closed,7,7
+M-221,S-PULSE,5,Reviewed clinical validation memo,Founder still uncertain on regulatory sequencing,6,6
