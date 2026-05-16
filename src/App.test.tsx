@@ -60,10 +60,11 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: /process raw information/i }));
 
     expect(await screen.findByText('Baseline 48 -> refreshed 70 (+22 pts).')).toBeVisible();
-    expect(screen.getByText('85%')).toBeVisible();
+    expect(screen.getAllByText('85%')[0]).toBeVisible();
     expect(screen.getByText('12 monthly rows processed.')).toBeVisible();
     expect(screen.getByText('Mentor-startup relationship graph')).toBeVisible();
-    expect(screen.getByText('Executive review drawer')).toBeVisible();
+    expect(screen.getByText('Cohort-level insight drawer')).toBeVisible();
+    expect(screen.getByText('Ranked relationship evaluations')).toBeVisible();
     expect(
       screen.getByText(/Monthly mentor records show materially stronger cohort signal/i),
     ).toBeVisible();
@@ -72,7 +73,7 @@ describe('App', () => {
 
     expect(screen.getByText('Baseline cohort health is holding at 48 pending the monthly sync.')).toBeVisible();
     expect(screen.getByText('Pending')).toBeVisible();
-    expect(screen.queryByText('Executive review drawer')).not.toBeInTheDocument();
+    expect(screen.queryByText('Cohort-level insight drawer')).not.toBeInTheDocument();
   });
 
   it('selects a relationship from the processed graph trace controls', async () => {
@@ -85,10 +86,13 @@ describe('App', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /process raw information/i }));
 
-    expect(await screen.findByText('Executive review drawer')).toBeVisible();
+    expect(await screen.findByText('Cohort-level insight drawer')).toBeVisible();
 
     await userEvent.click(screen.getByRole('button', { name: 'Select Maya Chen to LoopPay, healthy relationship' }));
 
-    expect(screen.getByText('Selected relationship: M-104:S-LOOP')).toBeVisible();
+    expect(screen.getByText('Selected relationship review')).toBeVisible();
+    expect(screen.getByText('Maya Chen -> LoopPay')).toBeVisible();
+    expect(screen.getByText(/recovered mentor fit/i)).toBeVisible();
+    expect(screen.getByText(/secure a named enterprise champion/i)).toBeVisible();
   });
 });
