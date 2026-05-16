@@ -12,6 +12,7 @@
 
 const logger = require('../utils/logger');
 const fs = require('fs');
+const path = require('path');
 
 let db = null;
 let FieldValue = null;
@@ -25,20 +26,27 @@ function getFirestore() {
     const { initializeApp, getApps, cert } = require('firebase-admin/app');
     const { getFirestore: _getFirestore, FieldValue: _FieldValue } = require('firebase-admin/firestore');
 
-    if (!process.env.GOOGLE_CLOUD_PROJECT) {
-      logger.warn('Firestore: GOOGLE_CLOUD_PROJECT not set — skipping');
+    const projectId = process.env.GOOGLE_CLOUD_PROJECT || process.env.FIREBASE_PROJECT_ID;
+
+    if (!projectId) {
+      logger.warn('Firestore: GOOGLE_CLOUD_PROJECT or FIREBASE_PROJECT_ID not set — skipping');
       return null;
     }
 
     if (!getApps().length) {
-      const keyPath = './serviceAccountKey.json';
+      const configuredKeyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      const fallbackKeyPath = './serviceAccountKey.json';
+      const keyPath = configuredKeyPath
+        ? path.resolve(process.cwd(), configuredKeyPath)
+        : path.resolve(process.cwd(), fallbackKeyPath);
+
       if (fs.existsSync(keyPath) && fs.statSync(keyPath).size > 10) {
         // Use service account key file
-        initializeApp({ credential: cert(require('../../serviceAccountKey.json')), projectId: process.env.GOOGLE_CLOUD_PROJECT });
+        initializeApp({ credential: cert(require(keyPath)), projectId });
         logger.info('Firestore: initialized with service account key');
       } else {
         // Use Application Default Credentials (works on Cloud Run automatically)
-        initializeApp({ projectId: process.env.GOOGLE_CLOUD_PROJECT });
+        initializeApp({ projectId });
         logger.info('Firestore: initialized with application default credentials');
       }
     }

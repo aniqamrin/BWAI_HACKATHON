@@ -19,8 +19,34 @@ const upload = multer({
   },
 });
 
-// GET /api/ecosystems/:ecosystemId/snapshot
-router.get('/:ecosystemId/snapshot', async (req, res) => {
+const apiContract = {
+  firestoreShape: [
+    'ecosystems/{ecosystemId}',
+    'ecosystems/{ecosystemId}/actors/{actorId}',
+    'ecosystems/{ecosystemId}/evidenceSources/{evidenceSourceId}',
+    'ecosystems/{ecosystemId}/lenses/{lensId}',
+    'ecosystems/{ecosystemId}/recommendations/{recommendationId}',
+    'ecosystems/{ecosystemId}/decisions/{decisionId}',
+  ],
+  endpoints: {
+    getEcosystemSnapshot: 'GET /api/ecosystems/:ecosystemId/snapshot',
+    processEvidence: 'POST /api/ecosystems/:ecosystemId/evidence/process',
+    rankMentors: 'POST /api/ecosystems/:ecosystemId/rank/mentors',
+    rankPartners: 'POST /api/ecosystems/:ecosystemId/rank/partners',
+    recordDecision: 'POST /api/ecosystems/:ecosystemId/decisions',
+  },
+  aliases: {
+    processEvidence: 'POST /api/ecosystems/:ecosystemId/process-evidence',
+    rankMentors: 'POST /api/ecosystems/:ecosystemId/rank-mentors',
+    rankPartners: 'POST /api/ecosystems/:ecosystemId/rank-partners',
+    recordDecision: 'POST /api/ecosystems/:ecosystemId/record-decision',
+  },
+  evidenceInputs: ['urls', 'csvText', 'whatsappText', 'notes', 'files'],
+  fileTypes: ['pdf', 'docx', 'txt', 'notes', 'csv', 'zip WhatsApp export'],
+  analysisLayer: 'Server extracts text and metadata first, then sends clean content to Gemini for strict JSON.',
+};
+
+async function handleGetSnapshot(req, res) {
   try {
     const snapshot = await getEcosystemSnapshot(req.params.ecosystemId);
     return success(res, snapshot, 'Ecosystem snapshot loaded');
@@ -28,12 +54,9 @@ router.get('/:ecosystemId/snapshot', async (req, res) => {
     logger.error('Get ecosystem snapshot error:', err);
     return error(res, 'Failed to load ecosystem snapshot: ' + err.message);
   }
-});
+}
 
-// POST /api/ecosystems/:ecosystemId/evidence/process
-// Accepts JSON: { urls, csvText, whatsappText, notes }
-// Accepts multipart form-data: files[] plus the same JSON fields as text fields.
-router.post('/:ecosystemId/evidence/process', upload.any(), async (req, res) => {
+async function handleProcessEvidence(req, res) {
   try {
     const result = await processEvidence({
       ecosystemId: req.params.ecosystemId,
@@ -49,10 +72,9 @@ router.post('/:ecosystemId/evidence/process', upload.any(), async (req, res) => 
     }
     return error(res, 'Evidence processing failed: ' + err.message);
   }
-});
+}
 
-// POST /api/ecosystems/:ecosystemId/rank/mentors
-router.post('/:ecosystemId/rank/mentors', async (req, res) => {
+async function handleRankMentors(req, res) {
   try {
     const rankings = await rankMentors(req.params.ecosystemId, req.body?.startupId || req.body?.startup_id || null);
     return success(res, { rankings }, 'Mentor rankings generated');
@@ -60,10 +82,9 @@ router.post('/:ecosystemId/rank/mentors', async (req, res) => {
     logger.error('Rank mentors error:', err);
     return error(res, 'Mentor ranking failed: ' + err.message);
   }
-});
+}
 
-// POST /api/ecosystems/:ecosystemId/rank/partners
-router.post('/:ecosystemId/rank/partners', async (req, res) => {
+async function handleRankPartners(req, res) {
   try {
     const rankings = await rankPartners(req.params.ecosystemId, req.body?.startupId || req.body?.startup_id || null);
     return success(res, { rankings }, 'Partner rankings generated');
@@ -71,10 +92,9 @@ router.post('/:ecosystemId/rank/partners', async (req, res) => {
     logger.error('Rank partners error:', err);
     return error(res, 'Partner ranking failed: ' + err.message);
   }
-});
+}
 
-// POST /api/ecosystems/:ecosystemId/decisions
-router.post('/:ecosystemId/decisions', async (req, res) => {
+async function handleRecordDecision(req, res) {
   try {
     const decision = await recordDecision(req.params.ecosystemId, {
       recommendationId: req.body?.recommendationId || req.body?.recommendation_id,
@@ -91,6 +111,32 @@ router.post('/:ecosystemId/decisions', async (req, res) => {
     }
     return error(res, 'Decision recording failed: ' + err.message);
   }
-});
+}
+
+// GET /api/ecosystems/contract
+router.get('/contract', (_req, res) => success(res, apiContract, 'Relationship OS backend contract loaded'));
+
+// GET /api/ecosystems/:ecosystemId/snapshot
+router.get('/:ecosystemId/snapshot', handleGetSnapshot);
+
+// POST /api/ecosystems/:ecosystemId/evidence/process
+// Accepts JSON: { urls, csvText, whatsappText, notes }
+// Accepts multipart form-data: files[] plus the same JSON fields as text fields.
+router.post('/:ecosystemId/evidence/process', upload.any(), handleProcessEvidence);
+
+// Function-name aliases for direct frontend handoff wiring.
+router.post('/:ecosystemId/process-evidence', upload.any(), handleProcessEvidence);
+
+// POST /api/ecosystems/:ecosystemId/rank/mentors
+router.post('/:ecosystemId/rank/mentors', handleRankMentors);
+router.post('/:ecosystemId/rank-mentors', handleRankMentors);
+
+// POST /api/ecosystems/:ecosystemId/rank/partners
+router.post('/:ecosystemId/rank/partners', handleRankPartners);
+router.post('/:ecosystemId/rank-partners', handleRankPartners);
+
+// POST /api/ecosystems/:ecosystemId/decisions
+router.post('/:ecosystemId/decisions', handleRecordDecision);
+router.post('/:ecosystemId/record-decision', handleRecordDecision);
 
 module.exports = router;

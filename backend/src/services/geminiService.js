@@ -23,7 +23,7 @@ async function generateContent(prompt, options = {}) {
 
   try {
     const model = ai.getGenerativeModel({
-      model: options.model || 'gemini-1.5-flash',
+      model: options.model || process.env.GEMINI_MODEL || 'gemini-2.5-pro',
       generationConfig: {
         temperature: options.temperature || 0.3,
         topP: 0.8,

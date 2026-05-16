@@ -15,9 +15,20 @@ function requireEnv(key) {
   return value;
 }
 
+function requireOneOf(keys) {
+  const hasValue = keys.some((key) => {
+    const value = process.env[key];
+    return value && !value.startsWith('your_');
+  });
+
+  if (!hasValue) {
+    throw new Error(`${keys.join(' or ')} is required for live Google integration testing`);
+  }
+}
+
 async function main() {
   requireEnv('GEMINI_API_KEY');
-  requireEnv('GOOGLE_CLOUD_PROJECT');
+  requireOneOf(['GOOGLE_CLOUD_PROJECT', 'FIREBASE_PROJECT_ID']);
 
   const firestore = getFirestore();
   if (!firestore) {

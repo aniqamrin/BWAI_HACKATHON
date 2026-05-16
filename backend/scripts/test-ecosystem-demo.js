@@ -34,12 +34,24 @@ async function main() {
     });
     const mentors = await mentorRes.json();
 
+    const partnerAliasRes = await fetch(`${base}/rank-partners`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ startupId: 'startup_atlas' }),
+    });
+    const partners = await partnerAliasRes.json();
+
     const snapshotRes = await fetch(`${base}/snapshot`);
     const snapshot = await snapshotRes.json();
 
+    const contractRes = await fetch(`http://127.0.0.1:${port}/api/ecosystems/contract`);
+    const contract = await contractRes.json();
+
     if (!processRes.ok || !processed.success) throw new Error('processEvidence failed');
     if (!mentorRes.ok || !mentors.success) throw new Error('rankMentors failed');
+    if (!partnerAliasRes.ok || !partners.success) throw new Error('rankPartners alias failed');
     if (!snapshotRes.ok || !snapshot.success) throw new Error('getEcosystemSnapshot failed');
+    if (!contractRes.ok || !contract.data?.aliases?.processEvidence) throw new Error('API contract endpoint failed');
     if (processed.data.evidenceSources.length < 2) throw new Error('Expected at least two evidence sources');
     if (!snapshot.data.recommendations.every((rec) => rec.evidenceSourceIds?.length > 0)) {
       throw new Error('Recommendations must link to evidenceSourceIds');
@@ -52,6 +64,8 @@ async function main() {
       actors: snapshot.data.actors.length,
       recommendations: snapshot.data.recommendations.length,
       mentorRankings: mentors.data.rankings.length,
+      partnerRankings: partners.data.rankings.length,
+      contractAliases: Object.keys(contract.data.aliases).length,
     }, null, 2));
   } finally {
     server.close();

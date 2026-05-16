@@ -20,8 +20,8 @@ const config = {
 
   ai: {
     geminiApiKey: process.env.GEMINI_API_KEY,
-    geminiModel: 'gemini-1.5-flash',
-    googleCloudProject: process.env.GOOGLE_CLOUD_PROJECT,
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-pro',
+    googleCloudProject: process.env.GOOGLE_CLOUD_PROJECT || process.env.FIREBASE_PROJECT_ID,
     vertexLocation: process.env.VERTEX_AI_LOCATION || 'us-central1',
     temperature: 0.3,
     maxTokens: 2048
@@ -29,7 +29,7 @@ const config = {
 
   firebase: {
     apiKey: process.env.FIREBASE_API_KEY,
-    projectId: process.env.FIREBASE_PROJECT_ID,
+    projectId: process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT,
     storageBucket: process.env.FIREBASE_STORAGE_BUCKET
   },
 
