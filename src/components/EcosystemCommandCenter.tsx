@@ -15,6 +15,7 @@ import {
   Users2,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
+import { useMemo, useState } from 'react';
 
 type Icon = ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
 
@@ -26,12 +27,18 @@ type Signal = {
 };
 
 type Action = {
+  id: string;
   title: string;
   actor: string;
   confidence: string;
   status: 'Auto-ready' | 'Review suggested' | 'Manual evidence needed';
   rationale: string;
+  evidence: string[];
 };
+
+type ActionDecision = 'approved' | 'evidence-requested';
+
+type DisplayStatus = Action['status'] | 'Approved' | 'Evidence requested';
 
 const externalSignals: Signal[] = [
   {
@@ -89,32 +96,40 @@ const internalSignals: Signal[] = [
 
 const relationshipActions: Action[] = [
   {
+    id: 'provider',
     title: 'Attach service provider',
     actor: 'MedReg Studio to PulseGrid',
     confidence: '91%',
     status: 'Auto-ready',
     rationale: 'Regulatory blocker, clinical validation deck, and prior provider outcomes align.',
+    evidence: ['Pitch deck risk section', 'Outcome memory', 'Service provider catalogue'],
   },
   {
+    id: 'programme',
     title: 'Create programme link',
     actor: 'PulseGrid to Health Sandbox',
     confidence: '87%',
     status: 'Review suggested',
     rationale: 'Programme criteria match, but admin approval is required for cross-border intake.',
+    evidence: ['LinkedIn anchor', 'Programme eligibility rule', 'Admin governance policy'],
   },
   {
+    id: 'mentor',
     title: 'Add mentor support',
     actor: 'Priya Raman to PulseGrid',
     confidence: '83%',
     status: 'Auto-ready',
     rationale: 'Architecture expertise maps to unresolved integration risk and prior cohort pattern.',
+    evidence: ['Founder profile', 'Meeting telemetry', 'Mentor outcome history'],
   },
   {
+    id: 'partner',
     title: 'Escalate partner pathway',
     actor: 'Regional Hospital Network',
     confidence: '69%',
     status: 'Manual evidence needed',
     rationale: 'Strong sector fit, but pilot owner is missing from available source evidence.',
+    evidence: ['Partner page', 'Website sector match', 'Missing pilot owner field'],
   },
 ];
 
@@ -127,11 +142,13 @@ const actors = [
   { label: 'Programme admin', role: 'Governance owner', x: '49%', y: '86%', tone: 'bg-[#fbf4e7] text-[#17211c]' },
 ];
 
-function StatusPill({ status }: { status: Action['status'] }) {
+function StatusPill({ status }: { status: DisplayStatus }) {
   const classes = {
     'Auto-ready': 'border-[#45624f] bg-[#dce6d8] text-[#263b2d]',
     'Review suggested': 'border-[#ad8448] bg-[#f0dfbf] text-[#6b4a1c]',
     'Manual evidence needed': 'border-[#934439] bg-[#f4d8ce] text-[#743025]',
+    Approved: 'border-[#45624f] bg-[#17211c] text-[#fffaf0]',
+    'Evidence requested': 'border-[#934439] bg-[#fffaf0] text-[#743025]',
   }[status];
 
   return (
@@ -160,7 +177,15 @@ function SignalRow({ signal }: { signal: Signal }) {
   );
 }
 
-function RelationshipMap() {
+function RelationshipMap({
+  evidenceProcessed,
+  approvedCount,
+  evidenceRequestCount,
+}: {
+  evidenceProcessed: boolean;
+  approvedCount: number;
+  evidenceRequestCount: number;
+}) {
   return (
     <div className="relative min-h-[478px] overflow-hidden border border-[#17211c] bg-[#fffaf0]">
       <div className="absolute inset-x-0 top-0 flex items-center justify-between border-b border-[#9d8f77] bg-[#f7f1e5] px-5 py-4">
@@ -203,11 +228,11 @@ function RelationshipMap() {
         </div>
         <div className="border-r border-[#9d8f77] px-3 py-2">
           <p className="ui-sans text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#657064]">Evidence</p>
-          <p className="mt-1 text-2xl font-semibold">14</p>
+          <p className="mt-1 text-2xl font-semibold">{evidenceProcessed ? 18 : 14}</p>
         </div>
         <div className="px-3 py-2">
-          <p className="ui-sans text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#657064]">Reviews</p>
-          <p className="mt-1 text-2xl font-semibold">2</p>
+          <p className="ui-sans text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#657064]">Decisions</p>
+          <p className="mt-1 text-2xl font-semibold">{approvedCount + evidenceRequestCount}</p>
         </div>
       </div>
     </div>
@@ -215,6 +240,27 @@ function RelationshipMap() {
 }
 
 export function EcosystemCommandCenter() {
+  const [evidenceProcessed, setEvidenceProcessed] = useState(false);
+  const [selectedActionId, setSelectedActionId] = useState('provider');
+  const [decisions, setDecisions] = useState<Record<string, ActionDecision>>({});
+  const selectedAction = useMemo(
+    () => relationshipActions.find((action) => action.id === selectedActionId) ?? relationshipActions[0],
+    [selectedActionId],
+  );
+  const approvedCount = Object.values(decisions).filter((decision) => decision === 'approved').length;
+  const evidenceRequestCount = Object.values(decisions).filter((decision) => decision === 'evidence-requested').length;
+
+  function displayStatusFor(action: Action): DisplayStatus {
+    if (decisions[action.id] === 'approved') return 'Approved';
+    if (decisions[action.id] === 'evidence-requested') return 'Evidence requested';
+    return action.status;
+  }
+
+  function recordDecision(actionId: string, decision: ActionDecision) {
+    setDecisions((current) => ({ ...current, [actionId]: decision }));
+    setSelectedActionId(actionId);
+  }
+
   return (
     <main className="min-h-screen bg-[#ede4d1] px-5 py-5 text-[#17211c]">
       <div className="mx-auto max-w-[1540px] border border-[#17211c] bg-[#f7f1e5] shadow-[8px_8px_0_#17211c]">
@@ -226,7 +272,7 @@ export function EcosystemCommandCenter() {
             <div className="mt-3 flex items-end gap-4">
               <h1 className="text-5xl font-semibold leading-none">Relationship OS</h1>
               <span className="ui-sans mb-1 border border-[#17211c] bg-[#fffaf0] px-3 py-1 text-xs font-bold uppercase tracking-[0.12em]">
-                Mock v1
+                Prototype v2
               </span>
             </div>
             <p className="ui-sans mt-4 max-w-[72ch] text-sm leading-6 text-[#405047]">
@@ -251,15 +297,46 @@ export function EcosystemCommandCenter() {
                 linkedin.com/company/pulsegrid-health
               </p>
               <span className="ui-sans border border-[#45624f] bg-[#dce6d8] px-2 py-1 text-[0.65rem] font-bold uppercase tracking-[0.1em] text-[#263b2d]">
-                Actor resolved
+                {evidenceProcessed ? 'Evidence ready' : 'Actor resolved'}
               </span>
             </div>
           </div>
-          <button className="ui-sans flex h-[54px] items-center gap-2 border border-[#17211c] bg-[#17211c] px-5 text-sm font-bold uppercase tracking-[0.08em] text-[#fffaf0] shadow-[4px_4px_0_#9d8f77]">
-            Process relationship evidence
+          <button
+            className="ui-sans flex h-[54px] items-center gap-2 border border-[#17211c] bg-[#17211c] px-5 text-sm font-bold uppercase tracking-[0.08em] text-[#fffaf0] shadow-[4px_4px_0_#9d8f77]"
+            onClick={() => {
+              setEvidenceProcessed(true);
+              setSelectedActionId('programme');
+            }}
+          >
+            {evidenceProcessed ? 'Reprocess relationship evidence' : 'Process relationship evidence'}
             <ArrowRight className="h-4 w-4" aria-hidden />
           </button>
         </section>
+
+        {evidenceProcessed ? (
+          <section className="grid grid-cols-[minmax(0,1fr)_140px_160px_180px] border-b border-[#17211c] bg-[#dce6d8]">
+            <div className="px-7 py-4">
+              <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#45624f]">
+                Relationship evidence ready
+              </p>
+              <p className="ui-sans mt-1 text-sm font-bold text-[#17211c]">Evidence processed from 8 sources.</p>
+            </div>
+            <div className="border-l border-[#9d8f77] px-4 py-4">
+              <p className="text-3xl font-semibold leading-none">18</p>
+              <p className="ui-sans mt-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#45624f]">
+                Signals
+              </p>
+            </div>
+            <div className="border-l border-[#9d8f77] px-4 py-4">
+              <p className="ui-sans text-sm font-bold text-[#17211c]">{approvedCount} approved</p>
+              <p className="ui-sans mt-1 text-xs leading-5 text-[#45624f]">Governed links</p>
+            </div>
+            <div className="border-l border-[#9d8f77] px-4 py-4">
+              <p className="ui-sans text-sm font-bold text-[#17211c]">{evidenceRequestCount} evidence request</p>
+              <p className="ui-sans mt-1 text-xs leading-5 text-[#45624f]">Manual follow-up</p>
+            </div>
+          </section>
+        ) : null}
 
         <section className="grid grid-cols-[310px_minmax(0,1fr)_390px]">
           <aside className="border-r border-[#17211c] bg-[#fbf4e7]">
@@ -298,7 +375,11 @@ export function EcosystemCommandCenter() {
           </aside>
 
           <section className="p-5">
-            <RelationshipMap />
+            <RelationshipMap
+              evidenceProcessed={evidenceProcessed}
+              approvedCount={approvedCount}
+              evidenceRequestCount={evidenceRequestCount}
+            />
           </section>
 
           <aside className="border-l border-[#17211c] bg-[#fbf4e7]">
@@ -317,12 +398,48 @@ export function EcosystemCommandCenter() {
                     <p className="text-2xl font-semibold leading-none">{action.confidence}</p>
                   </div>
                   <div className="mt-3">
-                    <StatusPill status={action.status} />
+                    <StatusPill status={displayStatusFor(action)} />
                   </div>
                   <p className="ui-sans mt-3 text-xs leading-5 text-[#405047]">{action.rationale}</p>
+                  <div className="ui-sans mt-4 grid grid-cols-3 gap-2 text-[0.64rem] font-bold uppercase tracking-[0.08em]">
+                    <button
+                      className="border border-[#17211c] bg-[#fffaf0] px-2 py-2 text-[#17211c] hover:bg-[#17211c] hover:text-[#fffaf0] focus-visible:bg-[#17211c] focus-visible:text-[#fffaf0]"
+                      onClick={() => setSelectedActionId(action.id)}
+                    >
+                      Review {action.title}
+                    </button>
+                    <button
+                      className="border border-[#45624f] bg-[#dce6d8] px-2 py-2 text-[#263b2d] disabled:cursor-not-allowed disabled:opacity-45"
+                      disabled={!evidenceProcessed}
+                      onClick={() => recordDecision(action.id, 'approved')}
+                    >
+                      Approve {action.title}
+                    </button>
+                    <button
+                      className="border border-[#934439] bg-[#fffaf0] px-2 py-2 text-[#743025] disabled:cursor-not-allowed disabled:opacity-45"
+                      disabled={!evidenceProcessed}
+                      onClick={() => recordDecision(action.id, 'evidence-requested')}
+                    >
+                      Request evidence for {action.title}
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
+            <section className="border-t border-[#17211c] bg-[#f7f1e5] px-5 py-5">
+              <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">
+                Selected recommendation
+              </p>
+              <h3 className="mt-2 text-2xl font-semibold leading-tight">{selectedAction.actor}</h3>
+              <p className="ui-sans mt-3 text-xs leading-5 text-[#405047]">{selectedAction.rationale}</p>
+              <div className="mt-4 grid gap-2">
+                {selectedAction.evidence.map((evidence) => (
+                  <div key={evidence} className="ui-sans border border-[#9d8f77] bg-[#fffaf0] px-3 py-2 text-xs font-bold">
+                    {evidence}
+                  </div>
+                ))}
+              </div>
+            </section>
           </aside>
         </section>
 
