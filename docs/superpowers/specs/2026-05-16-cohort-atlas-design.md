@@ -32,6 +32,8 @@ The app will be built as a fast polished prototype using Vite, React, Tailwind C
 
 The selected direction is Institutional Ledger without gradients.
 
+The selected UI sample is `3. Post-Ingestion Executive Review`. This is the visual north star for the finished demo: a mature executive review surface with updated cohort metrics, a readable relationship graph, and a right-side insight drawer leading with cohort-level reasoning.
+
 Use a calm, premium, material-inspired interface:
 
 - Warm paper-like surfaces using flat colors.
@@ -86,12 +88,13 @@ The demo flow should be fast and crisp, with a 90-second presentation rhythm but
    - The graph updates using balanced motion.
    - Previously at-risk red edges/nodes shift toward healthy states.
    - Cohort health metrics update.
-   - The executive insight drawer opens automatically.
+   - The executive insight drawer opens automatically and should resemble the selected `Post-Ingestion Executive Review` sample.
 
 5. Review:
    - The drawer leads with a cohort-level summary.
    - Relationship details appear below as a ranked list or compact cards.
    - Clicking graph nodes or edges can reveal detailed reasoning for that relationship.
+   - The post-ingestion state should feel like the app's most polished destination, not a secondary detail panel.
 
 ## Data Model
 
