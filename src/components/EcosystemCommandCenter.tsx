@@ -23,6 +23,7 @@ import {
   type Action,
   type ActionDecision,
   type IconKey,
+  type LensConfig,
   type LensId,
   type MapActor,
   type MapLine,
@@ -358,6 +359,94 @@ function RankingsPanel({
   );
 }
 
+function ActionQueuePanel({
+  activeLens,
+  actions,
+  evidenceProcessed,
+  displayStatusFor,
+  onSelect,
+  onDecision,
+}: {
+  activeLens: LensConfig;
+  actions: Action[];
+  evidenceProcessed: boolean;
+  displayStatusFor: (action: Action) => DisplayStatus;
+  onSelect: (actionId: string) => void;
+  onDecision: (actionId: string, decision: ActionDecision) => void;
+}) {
+  return (
+    <section className="border border-[#17211c] bg-[#fffaf0]">
+      <div className="border-b border-[#17211c] px-5 py-5">
+        <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">{activeLens.queueEyebrow}</p>
+        <h2 className="mt-2 text-3xl font-semibold leading-none">{activeLens.queueTitle}</h2>
+      </div>
+      <div className="grid divide-y divide-[#cab99d] lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+        {actions.map((action) => (
+          <article key={action.title} className="bg-[#fffaf0] px-5 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="ui-sans text-sm font-bold text-[#17211c]">{action.title}</h3>
+                <p className="ui-sans mt-1 text-xs font-bold uppercase tracking-[0.1em] text-[#657064]">{action.actor}</p>
+              </div>
+              <p className="text-2xl font-semibold leading-none">{action.confidence}</p>
+            </div>
+            <div className="mt-3">
+              <StatusPill status={displayStatusFor(action)} />
+            </div>
+            <p className="ui-sans mt-3 text-xs leading-5 text-[#405047]">{action.rationale}</p>
+            <div className="ui-sans mt-4 grid grid-cols-3 gap-2 text-[0.64rem] font-bold uppercase tracking-[0.08em]">
+              <button
+                aria-label={`Review ${action.title}`}
+                className="flex min-h-10 items-center justify-center border border-[#17211c] bg-[#fffaf0] px-2 py-2 text-[#17211c] hover:bg-[#17211c] hover:text-[#fffaf0] focus-visible:bg-[#17211c] focus-visible:text-[#fffaf0]"
+                onClick={() => onSelect(action.id)}
+              >
+                Review
+              </button>
+              <button
+                aria-label={`Approve ${action.title}`}
+                className="flex min-h-10 items-center justify-center border border-[#45624f] bg-[#dce6d8] px-2 py-2 text-[#263b2d] disabled:cursor-not-allowed disabled:opacity-45"
+                disabled={!evidenceProcessed}
+                onClick={() => onDecision(action.id, 'approved')}
+              >
+                Approve
+              </button>
+              <button
+                aria-label={`Request evidence for ${action.title}`}
+                className="flex min-h-10 items-center justify-center border border-[#934439] bg-[#fffaf0] px-2 py-2 text-[#743025] disabled:cursor-not-allowed disabled:opacity-45"
+                disabled={!evidenceProcessed}
+                onClick={() => onDecision(action.id, 'evidence-requested')}
+              >
+                Evidence
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SelectedInsightPanel({ activeLens, selectedAction, isRankingLens }: { activeLens: LensConfig; selectedAction: Action; isRankingLens: boolean }) {
+  return (
+    <section className={`${isRankingLens ? '' : 'border-t'} border-[#17211c] bg-[#f7f1e5] px-5 py-5`}>
+      <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">
+        {activeLens.selectedLabel}
+      </p>
+      <h3 className="mt-2 text-2xl font-semibold leading-tight">
+        {selectedAction.detailHeading ?? selectedAction.actor}
+      </h3>
+      <p className="ui-sans mt-3 text-xs leading-5 text-[#405047]">{selectedAction.rationale}</p>
+      <div className="mt-4 grid gap-2">
+        {selectedAction.evidence.map((evidence) => (
+          <div key={evidence} className="ui-sans border border-[#9d8f77] bg-[#fffaf0] px-3 py-2 text-xs font-bold">
+            {evidence}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function EcosystemCommandCenter() {
   const [evidenceProcessed, setEvidenceProcessed] = useState(false);
   const [queuedEvidenceSource, setQueuedEvidenceSource] = useState<string | null>(null);
@@ -455,43 +544,34 @@ export function EcosystemCommandCenter() {
               </span>
             </div>
           </div>
-          <EvidenceIngestionPanel queuedEvidenceSource={queuedEvidenceSource} onQueueEvidence={setQueuedEvidenceSource} />
-          <button
-            className="ui-sans flex min-h-[54px] w-full items-center justify-center gap-2 border border-[#17211c] bg-[#17211c] px-5 py-3 text-sm font-bold uppercase tracking-[0.08em] text-[#fffaf0] shadow-[4px_4px_0_#9d8f77]"
-            onClick={() => {
-              setEvidenceProcessed(true);
-              setSelectedActionId(activeLens.processedSelectionId);
-            }}
-          >
-            {evidenceProcessed ? 'Reprocess relationship evidence' : 'Process relationship evidence'}
-            <ArrowRight className="h-4 w-4" aria-hidden />
-          </button>
         </section>
 
-        {evidenceProcessed ? (
-          <section className="grid min-w-0 grid-cols-2 border-b border-[#17211c] bg-[#dce6d8] md:grid-cols-[minmax(0,1fr)_120px_150px_160px]">
-            <div className="col-span-2 border-b border-[#9d8f77] px-5 py-4 md:col-span-1 md:border-b-0 sm:px-7">
-              <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#45624f]">
-                Relationship evidence ready
-              </p>
-              <p className="ui-sans mt-1 text-sm font-bold text-[#17211c]">Evidence processed from 8 sources.</p>
-            </div>
-            <div className="border-r border-[#9d8f77] px-4 py-4 md:border-l">
-              <p className="text-3xl font-semibold leading-none">18</p>
-              <p className="ui-sans mt-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#45624f]">
-                Signals
-              </p>
-            </div>
-            <div className="px-4 py-4 md:border-l">
-              <p className="ui-sans text-sm font-bold text-[#17211c]">{approvedCount} approved</p>
-              <p className="ui-sans mt-1 text-xs leading-5 text-[#45624f]">Governed links</p>
-            </div>
-            <div className="col-span-2 border-t border-[#9d8f77] px-4 py-4 md:col-span-1 md:border-l md:border-t-0">
-              <p className="ui-sans text-sm font-bold text-[#17211c]">{evidenceRequestCount} evidence request</p>
-              <p className="ui-sans mt-1 text-xs leading-5 text-[#45624f]">Manual follow-up</p>
-            </div>
-          </section>
-        ) : null}
+        <section className="border-b border-[#17211c] bg-[#fbf4e7] px-4 py-5 sm:px-5">
+          <div className="mb-4 px-1 sm:px-2">
+            <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Next steps</p>
+            <h2 className="mt-1 text-3xl font-semibold leading-tight">Current decision queue</h2>
+          </div>
+          {isRankingLens ? (
+            <RankingsPanel
+              rankings={activeActions}
+              selectedActionId={selectedAction.id}
+              onSelect={setSelectedActionId}
+              eyebrow={activeLens.mapEyebrow}
+              title={activeLens.mapTitle}
+              question={activeLens.mapQuestion}
+              badge={activeLens.mapBadge}
+            />
+          ) : (
+            <ActionQueuePanel
+              activeLens={activeLens}
+              actions={activeActions}
+              evidenceProcessed={evidenceProcessed}
+              displayStatusFor={displayStatusFor}
+              onSelect={setSelectedActionId}
+              onDecision={recordDecision}
+            />
+          )}
+        </section>
 
         <section className="grid min-w-0 grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="min-w-0 border-b border-[#17211c] bg-[#fbf4e7] xl:border-b-0 xl:border-r">
@@ -524,15 +604,7 @@ export function EcosystemCommandCenter() {
 
           <section className="min-w-0 p-4 sm:p-5">
             {isRankingLens ? (
-              <RankingsPanel
-                rankings={activeActions}
-                selectedActionId={selectedAction.id}
-                onSelect={setSelectedActionId}
-                eyebrow={activeLens.mapEyebrow}
-                title={activeLens.mapTitle}
-                question={activeLens.mapQuestion}
-                badge={activeLens.mapBadge}
-              />
+              <SelectedInsightPanel activeLens={activeLens} selectedAction={selectedAction} isRankingLens={isRankingLens} />
             ) : (
               <RelationshipMap
                 evidenceProcessed={evidenceProcessed}
@@ -548,72 +620,11 @@ export function EcosystemCommandCenter() {
             )}
           </section>
 
-          <aside className="min-w-0 border-t border-[#17211c] bg-[#fbf4e7] xl:col-span-2">
-            <div className="border-b border-[#17211c] px-5 py-5">
-              <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">{activeLens.queueEyebrow}</p>
-              <h2 className="mt-2 text-3xl font-semibold leading-none">{activeLens.queueTitle}</h2>
-            </div>
-            {!isRankingLens ? (
-              <div className="grid divide-y divide-[#cab99d] lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-                {activeActions.map((action) => (
-                  <article key={action.title} className="bg-[#fffaf0] px-5 py-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="ui-sans text-sm font-bold text-[#17211c]">{action.title}</h3>
-                        <p className="ui-sans mt-1 text-xs font-bold uppercase tracking-[0.1em] text-[#657064]">{action.actor}</p>
-                      </div>
-                      <p className="text-2xl font-semibold leading-none">{action.confidence}</p>
-                    </div>
-                    <div className="mt-3">
-                      <StatusPill status={displayStatusFor(action)} />
-                    </div>
-                    <p className="ui-sans mt-3 text-xs leading-5 text-[#405047]">{action.rationale}</p>
-                    <div className="ui-sans mt-4 grid grid-cols-3 gap-2 text-[0.64rem] font-bold uppercase tracking-[0.08em]">
-                      <button
-                        aria-label={`Review ${action.title}`}
-                        className="flex min-h-10 items-center justify-center border border-[#17211c] bg-[#fffaf0] px-2 py-2 text-[#17211c] hover:bg-[#17211c] hover:text-[#fffaf0] focus-visible:bg-[#17211c] focus-visible:text-[#fffaf0]"
-                        onClick={() => setSelectedActionId(action.id)}
-                      >
-                        Review
-                      </button>
-                      <button
-                        aria-label={`Approve ${action.title}`}
-                        className="flex min-h-10 items-center justify-center border border-[#45624f] bg-[#dce6d8] px-2 py-2 text-[#263b2d] disabled:cursor-not-allowed disabled:opacity-45"
-                        disabled={!evidenceProcessed}
-                        onClick={() => recordDecision(action.id, 'approved')}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        aria-label={`Request evidence for ${action.title}`}
-                        className="flex min-h-10 items-center justify-center border border-[#934439] bg-[#fffaf0] px-2 py-2 text-[#743025] disabled:cursor-not-allowed disabled:opacity-45"
-                        disabled={!evidenceProcessed}
-                        onClick={() => recordDecision(action.id, 'evidence-requested')}
-                      >
-                        Evidence
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : null}
-            <section className={`${isRankingLens ? '' : 'border-t'} border-[#17211c] bg-[#f7f1e5] px-5 py-5`}>
-              <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">
-                {activeLens.selectedLabel}
-              </p>
-              <h3 className="mt-2 text-2xl font-semibold leading-tight">
-                {selectedAction.detailHeading ?? selectedAction.actor}
-              </h3>
-              <p className="ui-sans mt-3 text-xs leading-5 text-[#405047]">{selectedAction.rationale}</p>
-              <div className="mt-4 grid gap-2">
-                {selectedAction.evidence.map((evidence) => (
-                  <div key={evidence} className="ui-sans border border-[#9d8f77] bg-[#fffaf0] px-3 py-2 text-xs font-bold">
-                    {evidence}
-                  </div>
-                ))}
-              </div>
-            </section>
-          </aside>
+          {!isRankingLens ? (
+            <aside className="min-w-0 border-t border-[#17211c] bg-[#fbf4e7] xl:col-span-2">
+              <SelectedInsightPanel activeLens={activeLens} selectedAction={selectedAction} isRankingLens={isRankingLens} />
+            </aside>
+          ) : null}
         </section>
 
         <section className="grid min-w-0 grid-cols-1 border-t border-[#17211c] xl:grid-cols-2">
@@ -662,6 +673,48 @@ export function EcosystemCommandCenter() {
               <p className="ui-sans mt-2 text-xs font-bold uppercase tracking-[0.12em] text-[#d9cfbd]">Actions ready</p>
             </div>
           </div>
+        </section>
+
+        <section className="grid min-w-0 grid-cols-1 gap-4 border-t border-[#17211c] bg-[#fbf4e7] px-5 py-5 sm:px-7">
+          <div>
+            <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Data setup</p>
+            <h2 className="mt-1 text-3xl font-semibold leading-tight">Raw information pipeline</h2>
+          </div>
+          {evidenceProcessed ? (
+            <section className="grid min-w-0 grid-cols-2 border border-[#17211c] bg-[#dce6d8] md:grid-cols-[minmax(0,1fr)_120px_150px_160px]">
+              <div className="col-span-2 border-b border-[#9d8f77] px-5 py-4 md:col-span-1 md:border-b-0 sm:px-7">
+                <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#45624f]">
+                  Relationship evidence ready
+                </p>
+                <p className="ui-sans mt-1 text-sm font-bold text-[#17211c]">Evidence processed from 8 sources.</p>
+              </div>
+              <div className="border-r border-[#9d8f77] px-4 py-4 md:border-l">
+                <p className="text-3xl font-semibold leading-none">18</p>
+                <p className="ui-sans mt-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#45624f]">
+                  Signals
+                </p>
+              </div>
+              <div className="px-4 py-4 md:border-l">
+                <p className="ui-sans text-sm font-bold text-[#17211c]">{approvedCount} approved</p>
+                <p className="ui-sans mt-1 text-xs leading-5 text-[#45624f]">Governed links</p>
+              </div>
+              <div className="col-span-2 border-t border-[#9d8f77] px-4 py-4 md:col-span-1 md:border-l md:border-t-0">
+                <p className="ui-sans text-sm font-bold text-[#17211c]">{evidenceRequestCount} evidence request</p>
+                <p className="ui-sans mt-1 text-xs leading-5 text-[#45624f]">Manual follow-up</p>
+              </div>
+            </section>
+          ) : null}
+          <EvidenceIngestionPanel queuedEvidenceSource={queuedEvidenceSource} onQueueEvidence={setQueuedEvidenceSource} />
+          <button
+            className="ui-sans flex min-h-[54px] w-full items-center justify-center gap-2 border border-[#17211c] bg-[#17211c] px-5 py-3 text-sm font-bold uppercase tracking-[0.08em] text-[#fffaf0] shadow-[4px_4px_0_#9d8f77]"
+            onClick={() => {
+              setEvidenceProcessed(true);
+              setSelectedActionId(activeLens.processedSelectionId);
+            }}
+          >
+            {evidenceProcessed ? 'Reprocess Raw Information' : 'Process Raw Information'}
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </button>
         </section>
       </div>
     </main>

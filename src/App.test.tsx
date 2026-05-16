@@ -16,10 +16,23 @@ describe('App', () => {
     expect(screen.getByText('Automate discovery and evidence. Keep humans on judgement and governance.')).toBeVisible();
   });
 
+  it('orders the page as next steps, supporting insights, then ingestion', () => {
+    render(<App />);
+
+    const nextSteps = screen.getByText('Relationships to create');
+    const supportingInsights = screen.getByText('Recommended relationship bundle');
+    const signalLayer = screen.getByText('What AI reads after LinkedIn');
+    const ingestion = screen.getByText('Add relationship evidence');
+
+    expect(nextSteps.compareDocumentPosition(supportingInsights) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(supportingInsights.compareDocumentPosition(signalLayer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(signalLayer.compareDocumentPosition(ingestion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('processes relationship evidence and opens a recommendation review', async () => {
     render(<App />);
 
-    await userEvent.click(screen.getByRole('button', { name: /process relationship evidence/i }));
+    await userEvent.click(screen.getByRole('button', { name: /process raw information/i }));
 
     expect(screen.getByText('Evidence processed from 8 sources.')).toBeVisible();
     expect(screen.getByText('Relationship evidence ready')).toBeVisible();
@@ -35,7 +48,7 @@ describe('App', () => {
   it('lets admins approve links or request missing evidence', async () => {
     render(<App />);
 
-    await userEvent.click(screen.getByRole('button', { name: /process relationship evidence/i }));
+    await userEvent.click(screen.getByRole('button', { name: /process raw information/i }));
     await userEvent.click(screen.getByRole('button', { name: /approve attach service provider/i }));
     await userEvent.click(screen.getByRole('button', { name: /request evidence for escalate partner pathway/i }));
 
@@ -69,7 +82,7 @@ describe('App', () => {
     expect(screen.getAllByText('Regional Hospital Network')).toHaveLength(2);
     expect(screen.getAllByText('Pilot pathway')).toHaveLength(2);
     expect(screen.getByText('Warm intro')).toBeVisible();
-    expect(screen.getAllByText('Partner ranking detail')).toHaveLength(2);
+    expect(screen.getByText('Partner ranking detail')).toBeVisible();
   });
 
   it('shows ranked mentor opportunities in the mentor lens', async () => {
@@ -83,7 +96,7 @@ describe('App', () => {
     expect(screen.getAllByText('Priya Raman')).toHaveLength(2);
     expect(screen.getAllByText('Architecture mentor')).toHaveLength(2);
     expect(screen.getByText('Fast cadence')).toBeVisible();
-    expect(screen.getAllByText('Mentor ranking detail')).toHaveLength(2);
+    expect(screen.getByText('Mentor ranking detail')).toBeVisible();
   });
 
   it('makes WhatsApp upload a prominent relationship evidence source', async () => {
