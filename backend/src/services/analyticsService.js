@@ -1,5 +1,6 @@
 const { generateContent } = require('./geminiService');
 const { query } = require('../db/connection');
+const { buildEcosystemInsightPrompt } = require('../prompts/relationshipPrompt');
 const logger = require('../utils/logger');
 
 async function getDashboardOverview() {
@@ -76,32 +77,24 @@ async function getEcosystemInsights() {
   try {
     const overview = await getDashboardOverview();
 
-    const prompt = `
-You are an ecosystem intelligence analyst. Based on this ecosystem data, generate strategic insights.
-
-ECOSYSTEM DATA:
-- Total Startups: ${overview.stats.startups.total}
-- Verified Startups: ${overview.stats.startups.verified}
-- Avg Verification Score: ${parseFloat(overview.stats.startups.avg_score || 0).toFixed(1)}
-- Total Mentors: ${overview.stats.mentors.total}
-- Available Mentors: ${overview.stats.mentors.available}
-- Total Programmes: ${overview.stats.programmes.total}
-- Active Relationships: ${overview.stats.relationships.active}
-- AI-Generated Matches: ${overview.stats.relationships.ai_generated}
-- Avg Match Score: ${parseFloat(overview.stats.relationships.avg_match_score || 0).toFixed(1)}
-- Industry Distribution: ${overview.distributions.industry.map(i => `${i.industry}(${i.count})`).join(', ')}
-
-Return ONLY valid JSON:
-{
-  "ecosystem_health_score": <number 0-100>,
-  "key_insights": ["<insight 1>", "<insight 2>", "<insight 3>", "<insight 4>"],
-  "opportunities": ["<opportunity 1>", "<opportunity 2>", "<opportunity 3>"],
-  "risks": ["<risk 1>", "<risk 2>"],
-  "recommendations": ["<recommendation 1>", "<recommendation 2>", "<recommendation 3>"],
-  "growth_trajectory": "<accelerating|stable|declining>",
-  "headline": "<one compelling headline about the ecosystem>"
-}
-`;
+    const prompt = buildEcosystemInsightPrompt({
+      total_startups: overview.stats.startups.total,
+      verified_startups: overview.stats.startups.verified,
+      avg_verification_score: parseFloat(overview.stats.startups.avg_score || 0).toFixed(1),
+      high_risk_startups: overview.stats.startups.high_risk,
+      total_mentors: overview.stats.mentors.total,
+      available_mentors: overview.stats.mentors.available,
+      avg_mentor_rating: parseFloat(overview.stats.mentors.avg_rating || 0).toFixed(1),
+      total_programmes: overview.stats.programmes.total,
+      open_programmes: overview.stats.programmes.open,
+      ongoing_programmes: overview.stats.programmes.ongoing,
+      total_relationships: overview.stats.relationships.total,
+      active_relationships: overview.stats.relationships.active,
+      ai_generated_matches: overview.stats.relationships.ai_generated,
+      avg_match_score: parseFloat(overview.stats.relationships.avg_match_score || 0).toFixed(1),
+      excellent_health_count: overview.stats.relationships.excellent_health,
+      industry_distribution: overview.distributions.industry.map(i => `${i.industry}(${i.count})`).join(', ')
+    });
 
     const insights = await generateContent(prompt, {
       mockType: 'ecosystem_insights',

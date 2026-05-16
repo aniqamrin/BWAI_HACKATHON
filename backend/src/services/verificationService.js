@@ -1,7 +1,9 @@
 const { generateContent } = require('./geminiService');
 const { query } = require('../db/connection');
+const { buildVerificationPrompt } = require('../prompts/verificationPrompt');
 const logger = require('../utils/logger');
 
+// Legacy inline prompt kept as fallback
 const VERIFICATION_PROMPT = (startup) => `
 You are an expert startup analyst and due diligence specialist for an African innovation ecosystem platform.
 
@@ -59,8 +61,9 @@ async function verifyStartup(startupId) {
 
     const startup = result.rows[0];
 
-    // Call Gemini AI
-    const aiResult = await generateContent(VERIFICATION_PROMPT(startup), {
+    // Call Gemini AI — use structured prompt module
+    const prompt = buildVerificationPrompt(startup);
+    const aiResult = await generateContent(prompt, {
       mockType: 'verification',
       temperature: 0.2
     });

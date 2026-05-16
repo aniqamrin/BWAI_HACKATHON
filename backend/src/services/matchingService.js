@@ -1,88 +1,14 @@
 const { generateContent } = require('./geminiService');
 const { query } = require('../db/connection');
+const { buildMentorMatchPrompt, buildProgrammeMatchPrompt } = require('../prompts/matchingPrompt');
 const logger = require('../utils/logger');
-
-const MENTOR_MATCH_PROMPT = (startup, mentor) => `
-You are an expert ecosystem relationship manager specializing in startup-mentor matching for African innovation ecosystems.
-
-Analyze the compatibility between this startup and mentor, and provide a detailed matching assessment.
-
-STARTUP PROFILE:
-- Name: ${startup.startup_name}
-- Industry: ${startup.industry}
-- Stage: ${startup.stage}
-- Country: ${startup.country}
-- Description: ${startup.description}
-- Problem: ${startup.problem_statement || 'Not specified'}
-- Traction: ${startup.traction || 'Not specified'}
-- Verification Score: ${startup.verification_score}/100
-
-MENTOR PROFILE:
-- Name: ${mentor.full_name}
-- Expertise: ${Array.isArray(mentor.expertise) ? mentor.expertise.join(', ') : mentor.expertise}
-- Industries: ${Array.isArray(mentor.industries) ? mentor.industries.join(', ') : mentor.industries}
-- Years Experience: ${mentor.years_experience}
-- Location: ${mentor.location}
-- Company: ${mentor.company}
-- Title: ${mentor.title}
-- Current Rating: ${mentor.rating}/5
-- Availability: ${mentor.availability}
-
-Return ONLY valid JSON:
-{
-  "compatibility_score": <number 0-100>,
-  "confidence_score": <number 0-100>,
-  "mentorship_quality": "<excellent|high|medium|low>",
-  "expertise_relevance": <number 0-1>,
-  "growth_potential_alignment": <number 0-1>,
-  "geographic_synergy": <number 0-1>,
-  "reasoning": "<2-3 sentence explanation of why this match works>",
-  "recommended_focus_areas": ["<area 1>", "<area 2>", "<area 3>"],
-  "potential_challenges": ["<challenge 1>"],
-  "estimated_impact": "<High|Medium|Low> - <brief explanation>"
-}
-`;
-
-const PROGRAMME_MATCH_PROMPT = (startup, programme) => `
-Analyze the fit between this startup and accelerator programme.
-
-STARTUP:
-- Name: ${startup.startup_name}
-- Industry: ${startup.industry}
-- Stage: ${startup.stage}
-- Country: ${startup.country}
-- Description: ${startup.description}
-- Verification Score: ${startup.verification_score}/100
-
-PROGRAMME:
-- Name: ${programme.programme_name}
-- Focus Areas: ${Array.isArray(programme.focus_area) ? programme.focus_area.join(', ') : programme.focus_area}
-- Country: ${programme.country}
-- Duration: ${programme.duration_weeks} weeks
-- Funding: $${programme.funding_offered}
-- Status: ${programme.status}
-- Benefits: ${Array.isArray(programme.benefits) ? programme.benefits.join(', ') : programme.benefits}
-
-Return ONLY valid JSON:
-{
-  "fit_score": <number 0-100>,
-  "confidence_score": <number 0-100>,
-  "eligibility_assessment": "<eligible|likely_eligible|borderline|ineligible>",
-  "alignment_factors": ["<factor 1>", "<factor 2>"],
-  "gaps": ["<gap 1>"],
-  "reasoning": "<2-3 sentence explanation>",
-  "application_recommendation": "<strong_apply|apply|consider|skip>"
-}
-`;
 
 async function matchMentorsForStartup(startupId, limit = 5) {
   try {
-    // Get startup
     const startupResult = await query('SELECT * FROM startups WHERE id = $1', [startupId]);
     if (!startupResult.rows[0]) throw new Error('Startup not found');
     const startup = startupResult.rows[0];
 
-    // Get available mentors
     const mentorsResult = await query(
       `SELECT m.*, u.full_name, u.email, u.country as user_country
        FROM mentors m
@@ -96,10 +22,10 @@ async function matchMentorsForStartup(startupId, limit = 5) {
     const mentors = mentorsResult.rows;
     if (mentors.length === 0) return [];
 
-    // Score each mentor with AI
     const matchPromises = mentors.map(async (mentor) => {
       try {
-        const aiResult = await generateContent(MENTOR_MATCH_PROMPT(startup, mentor), {
+        const prompt = buildMentorMatchPrompt(startup, mentor);
+        const aiResult = await generateContent(prompt, {
           mockType: 'mentor_match',
           temperature: 0.3
         });
@@ -130,10 +56,7 @@ async function matchMentorsForStartup(startupId, limit = 5) {
     });
 
     const results = (await Promise.all(matchPromises)).filter(Boolean);
-
-    // Sort by compatibility score
     results.sort((a, b) => b.compatibility_score - a.compatibility_score);
-
     return results.slice(0, limit);
   } catch (error) {
     logger.error('Mentor matching error:', error);
@@ -156,7 +79,8 @@ async function matchProgrammesForStartup(startupId, limit = 5) {
 
     const matchPromises = programmes.map(async (programme) => {
       try {
-        const aiResult = await generateContent(PROGRAMME_MATCH_PROMPT(startup, programme), {
+        const prompt = buildProgrammeMatchPrompt(startup, programme);
+        const aiResult = await generateContent(prompt, {
           mockType: 'mentor_match',
           temperature: 0.3
         });
