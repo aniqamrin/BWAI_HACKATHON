@@ -47,7 +47,19 @@ type MockCsvState = {
   mentorCount: number;
   startupCount: number;
   blockerCount: number;
+  rows: Record<string, string>[];
   preview: string[];
+};
+
+type ProcessedCsvSummary = {
+  rowCount: number;
+  relationshipCount: number;
+  blockerCount: number;
+  unresolvedAskCount: number;
+  partnerSignalCount: number;
+  averageConfidence: number;
+  topMentorName: string;
+  topMentorScore: number;
 };
 
 const sourceIcons: Record<string, Icon> = {
@@ -153,7 +165,59 @@ function summarizeMockCsv(filename: string, csvText: string): MockCsvState {
     mentorCount: mentors.size,
     startupCount: startups.size,
     blockerCount: blockers,
+    rows,
     preview: rows.slice(0, 3).map((row) => `${row.mentor_name} to ${row.startup_name}: ${row.blockers_identified}`),
+  };
+}
+
+function processMockCsvRows(csv: MockCsvState): ProcessedCsvSummary {
+  const relationshipPairs = new Set(csv.rows.filter((row) => row.mentor_id && row.startup_id).map((row) => `${row.mentor_id}:${row.startup_id}`));
+  const confidenceScores = csv.rows
+    .flatMap((row) => [Number(row.founder_confidence_score), Number(row.mentor_confidence_score)])
+    .filter((score) => Number.isFinite(score));
+  const mentorScores = new Map<string, { name: string; total: number; count: number }>();
+
+  csv.rows.forEach((row) => {
+    const mentorId = row.mentor_id;
+    if (!mentorId) return;
+
+    const founderConfidence = Number(row.founder_confidence_score) || 0;
+    const mentorConfidence = Number(row.mentor_confidence_score) || 0;
+    const hoursSynced = Number(row.hours_synced) || 0;
+    const warmthScore = row.sentiment_warmth === "high" ? 6 : row.sentiment_warmth === "medium" ? 3 : 0;
+    const responsivenessScore = /(4 hours|same day)/i.test(row.mentor_responsiveness)
+      ? 6
+      : /(24 hours|1 day)/i.test(row.mentor_responsiveness)
+        ? 3
+        : 0;
+    const rowScore = ((founderConfidence + mentorConfidence) / 2) * 10 + Math.min(hoursSynced * 3, 16) + warmthScore + responsivenessScore;
+    const current = mentorScores.get(mentorId) ?? { name: row.mentor_name || mentorId, total: 0, count: 0 };
+
+    mentorScores.set(mentorId, {
+      ...current,
+      total: current.total + rowScore,
+      count: current.count + 1,
+    });
+  });
+
+  const rankedMentor = Array.from(mentorScores.values())
+    .map((mentor) => ({
+      name: mentor.name,
+      score: Math.min(100, Math.round(mentor.total / Math.max(mentor.count, 1))),
+    }))
+    .sort((first, second) => second.score - first.score)[0];
+
+  return {
+    rowCount: csv.rowCount,
+    relationshipCount: relationshipPairs.size,
+    blockerCount: csv.blockerCount,
+    unresolvedAskCount: csv.rows.filter((row) => row.unresolved_asks?.trim()).length,
+    partnerSignalCount: csv.rows.filter((row) => /partner|intro|grant|pilot|greenbridge/i.test(`${row.follow_ups} ${row.unresolved_asks} ${row.blockers_identified}`)).length,
+    averageConfidence: confidenceScores.length
+      ? Math.round((confidenceScores.reduce((sum, score) => sum + score, 0) / confidenceScores.length) * 10) / 10
+      : 0,
+    topMentorName: rankedMentor?.name ?? "No mentor rows",
+    topMentorScore: rankedMentor?.score ?? 0,
   };
 }
 
@@ -563,9 +627,23 @@ function ActorProfile({ actor }: { actor: Actor }) {
   );
 }
 
+function ProcessedCsvStat({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <div className="border border-[#cab99d] bg-[#fffaf0] px-3 py-3">
+      <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[#657064]">{label}</p>
+      <p className="mt-1 text-xl font-semibold text-[#17211c]">{value}</p>
+      <p className="mt-1 text-xs leading-5 text-[#59675e]">{detail}</p>
+    </div>
+  );
+}
+
 function IngestionPanel({
   queuedEvidenceSource,
   evidenceProcessed,
+  isProcessingEvidence,
+  processRunCount,
+  processedCsvSummary,
+  processingError,
   mockCsv,
   onQueueEvidence,
   onLoadMockCsv,
@@ -573,10 +651,14 @@ function IngestionPanel({
 }: {
   queuedEvidenceSource: string | null;
   evidenceProcessed: boolean;
+  isProcessingEvidence: boolean;
+  processRunCount: number;
+  processedCsvSummary: ProcessedCsvSummary | null;
+  processingError: string | null;
   mockCsv: MockCsvState | null;
   onQueueEvidence: (sourceId: string) => void;
   onLoadMockCsv: () => void;
-  onProcessEvidence: () => void;
+  onProcessEvidence: () => Promise<void>;
 }) {
   const queuedSource = relationshipOsSnapshot.evidenceSources.find((source) => source.id === queuedEvidenceSource);
 
@@ -639,11 +721,13 @@ function IngestionPanel({
 
       <div className={cn("grid gap-3 border-t border-[#9d8f77] px-4 py-4 md:grid-cols-[minmax(0,1fr)_auto]", evidenceProcessed ? "bg-[#dce6d8]" : "bg-[#fbf4e7]")}>
         <div className="min-w-0">
-          <p className="text-sm font-bold text-[#17211c]">
-            {evidenceProcessed
+          <p className="text-sm font-bold text-[#17211c]" aria-live="polite">
+            {isProcessingEvidence
+              ? "Processing the CSV rows into relationship evidence..."
+              : evidenceProcessed
               ? mockCsv
-                ? `${mockCsv.rowCount} WhatsApp CSV rows processed into relationship, mentor ranking, and partner intro signals.`
-                : "Raw information processed into relationship, mentor ranking, and partner intro signals."
+                ? `Run ${processRunCount}: ${mockCsv.rowCount} WhatsApp CSV rows processed into relationship, mentor ranking, and partner intro signals.`
+                : `Run ${processRunCount}: Raw information processed into relationship, mentor ranking, and partner intro signals.`
               : mockCsv
                 ? `${mockCsv.filename} is ready to process.`
                 : queuedSource
@@ -653,14 +737,35 @@ function IngestionPanel({
           <p className="mt-1 text-xs leading-5 text-[#405047]">
             Backend handoff: {relationshipOsFirebaseContract.functions.map((fn) => fn.name).join(", ")}
           </p>
+          {evidenceProcessed ? (
+            <p className="mt-2 w-fit border border-[#45624f] bg-[#fffaf0] px-2 py-1 text-[0.64rem] font-bold uppercase tracking-[0.1em] text-[#263b2d]">
+              Dashboard snapshot refreshed
+            </p>
+          ) : null}
+          {processingError ? (
+            <p className="mt-2 border border-[#934439] bg-[#f4d8ce] px-3 py-2 text-xs font-bold text-[#743025]">
+              {processingError}
+            </p>
+          ) : null}
+          {processedCsvSummary ? (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <ProcessedCsvStat label="CSV rows" value={`${processedCsvSummary.rowCount}`} detail="parsed from file" />
+              <ProcessedCsvStat label="Relationships" value={`${processedCsvSummary.relationshipCount}`} detail="mentor-startup pairs" />
+              <ProcessedCsvStat label="Blockers" value={`${processedCsvSummary.blockerCount}`} detail={`${processedCsvSummary.unresolvedAskCount} unresolved asks`} />
+              <ProcessedCsvStat label="Top mentor" value={processedCsvSummary.topMentorName} detail={`${processedCsvSummary.topMentorScore}% CSV fit score`} />
+              <ProcessedCsvStat label="Partner signals" value={`${processedCsvSummary.partnerSignalCount}`} detail="intro, grant, or pilot cues" />
+              <ProcessedCsvStat label="Avg confidence" value={`${processedCsvSummary.averageConfidence}/10`} detail="founder and mentor scores" />
+            </div>
+          ) : null}
         </div>
         <button
           type="button"
           className="flex min-h-11 items-center justify-center gap-2 border border-[#17211c] bg-[#17211c] px-5 py-2 text-sm font-bold text-[#fffaf0] hover:bg-[#263b2d]"
+          disabled={isProcessingEvidence}
           onClick={onProcessEvidence}
         >
           <Upload className="h-4 w-4" aria-hidden />
-          {evidenceProcessed ? "Reprocess Raw Information" : "Process Raw Information"}
+          {isProcessingEvidence ? "Processing CSV" : evidenceProcessed ? "Reprocess Raw Information" : "Process Raw Information"}
         </button>
       </div>
     </section>
@@ -672,6 +777,10 @@ export default function RelationshipOSDemo() {
   const [selectedActionId, setSelectedActionId] = useState("action-atlas-priya");
   const [queuedEvidenceSource, setQueuedEvidenceSource] = useState<string | null>("whatsapp-export");
   const [evidenceProcessed, setEvidenceProcessed] = useState(false);
+  const [isProcessingEvidence, setIsProcessingEvidence] = useState(false);
+  const [processRunCount, setProcessRunCount] = useState(0);
+  const [processedCsvSummary, setProcessedCsvSummary] = useState<ProcessedCsvSummary | null>(null);
+  const [processingError, setProcessingError] = useState<string | null>(null);
   const [mockCsv, setMockCsv] = useState<MockCsvState | null>(null);
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
 
@@ -701,12 +810,51 @@ export default function RelationshipOSDemo() {
     setDecisions((current) => ({ ...current, [actionId]: decision }));
   }
 
-  async function loadMockCsv() {
+  function queueEvidence(sourceId: string) {
+    setQueuedEvidenceSource(sourceId);
+    setEvidenceProcessed(false);
+    setProcessRunCount(0);
+    setProcessedCsvSummary(null);
+    setProcessingError(null);
+  }
+
+  async function readMockCsv() {
     const response = await fetch(MOCK_WHATSAPP_CSV_PATH);
+    if (!response.ok) {
+      throw new Error(`Could not load ${MOCK_WHATSAPP_CSV_PATH}`);
+    }
+
     const csvText = await response.text();
-    setMockCsv(summarizeMockCsv("relationship-os-whatsapp-sync.csv", csvText));
+
+    return summarizeMockCsv("relationship-os-whatsapp-sync.csv", csvText);
+  }
+
+  async function loadMockCsv() {
+    const csvState = await readMockCsv();
+    setMockCsv(csvState);
     setQueuedEvidenceSource("csv-may-sync");
     setEvidenceProcessed(false);
+    setProcessRunCount(0);
+    setProcessedCsvSummary(null);
+    setProcessingError(null);
+  }
+
+  async function processEvidence() {
+    setIsProcessingEvidence(true);
+    setProcessingError(null);
+
+    try {
+      const csvState = mockCsv ?? (await readMockCsv());
+      setMockCsv(csvState);
+      setQueuedEvidenceSource("csv-may-sync");
+      setProcessedCsvSummary(processMockCsvRows(csvState));
+      setEvidenceProcessed(true);
+      setProcessRunCount((current) => current + 1);
+    } catch (error) {
+      setProcessingError(error instanceof Error ? error.message : "CSV processing failed.");
+    } finally {
+      setIsProcessingEvidence(false);
+    }
   }
 
   return (
@@ -785,10 +933,14 @@ export default function RelationshipOSDemo() {
           <IngestionPanel
             queuedEvidenceSource={queuedEvidenceSource}
             evidenceProcessed={evidenceProcessed}
+            isProcessingEvidence={isProcessingEvidence}
+            processRunCount={processRunCount}
+            processedCsvSummary={processedCsvSummary}
+            processingError={processingError}
             mockCsv={mockCsv}
-            onQueueEvidence={setQueuedEvidenceSource}
+            onQueueEvidence={queueEvidence}
             onLoadMockCsv={loadMockCsv}
-            onProcessEvidence={() => setEvidenceProcessed(true)}
+            onProcessEvidence={processEvidence}
           />
 
           <aside className="border border-[#17211c] bg-[#fffaf0] px-4 py-4">
