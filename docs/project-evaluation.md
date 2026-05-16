@@ -1,6 +1,6 @@
 # EcosystemOS / Relationship OS Evaluation
 
-This document explains why the current EcosystemOS prototype is a strong response to the hackathon problem statement. The main point is that the project does not simply add AI to a directory of startups and mentors. It reframes ecosystem coordination as a data and workflow problem: relationships become structured, reusable, inspectable entities that can be created, ranked, reviewed, and improved over time.
+The main point is that the project does not simply add AI to a directory of startups and mentors. It reframes ecosystem coordination as a data and workflow problem: relationships become structured, reusable, inspectable entities that can be created, ranked, reviewed, and improved over time.
 
 ## Repository Basis
 
