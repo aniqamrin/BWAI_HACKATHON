@@ -4,22 +4,29 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Briefcase, GraduationCap, GitBranch, Building2,
-  Brain, TrendingUp, Zap, AlertTriangle, CheckCircle, Clock
+  Brain, Zap, LayoutDashboard
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import StatCard from "@/components/shared/StatCard";
 import PageHeader from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { dashboardApi } from "@/lib/api";
-import { formatNumber, getRiskBadge, getHealthColor, timeAgo } from "@/lib/utils";
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell
-} from "recharts";
+import { getRiskBadge, timeAgo } from "@/lib/utils";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 const COLORS = ["#7C3AED", "#2563EB", "#10B981", "#F59E0B", "#EC4899"];
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload?.length) {
+    return (
+      <div className="glass-card rounded-lg p-2 text-xs">
+        <p>{payload[0].name}: {payload[0].value}</p>
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
@@ -137,13 +144,16 @@ export default function DashboardPage() {
           <CardContent>
             {industryData.length > 0 ? (
               <div className="flex items-center gap-4">
-                <PieChart width={120} height={120}>
-                  <Pie data={industryData} cx={55} cy={55} innerRadius={35} outerRadius={55} dataKey="value">
-                    {industryData.map((_: any, index: number) => (
-                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                </PieChart>
+                <ResponsiveContainer width={120} height={120}>
+                  <PieChart>
+                    <Pie data={industryData} cx={55} cy={55} innerRadius={35} outerRadius={55} dataKey="value">
+                      {industryData.map((_: any, index: number) => (
+                        <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
                 <div className="space-y-2 flex-1">
                   {industryData.slice(0, 5).map((d: any, i: number) => (
                     <div key={d.name} className="flex items-center justify-between">
@@ -205,7 +215,7 @@ export default function DashboardPage() {
               {(insights?.key_insights || [
                 "Loading ecosystem insights...",
                 "AI analysis in progress",
-                "Check back shortly"
+                "Check back shortly",
               ]).slice(0, 4).map((insight: string, i: number) => (
                 <div key={i} className="flex items-start gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-violet-400 mt-1.5 flex-shrink-0" />
@@ -262,12 +272,17 @@ export default function DashboardPage() {
               {(recent?.relationships || []).map((rel: any) => (
                 <div key={rel.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
                   <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${rel.engagement_health === 'excellent' ? 'bg-green-400' : rel.engagement_health === 'good' ? 'bg-blue-400' : 'bg-yellow-400'}`} />
+                    <div className={`w-2 h-2 rounded-full ${
+                      rel.engagement_health === "excellent" ? "bg-green-400" :
+                      rel.engagement_health === "good" ? "bg-blue-400" : "bg-yellow-400"
+                    }`} />
                     <div>
                       <p className="text-sm font-medium">
                         {rel.startup_name || "—"} ↔ {rel.mentor_name || rel.programme_name || rel.investor_name || "—"}
                       </p>
-                      <p className="text-xs text-muted-foreground capitalize">{rel.relationship_type?.replace("_", " ↔ ")}</p>
+                      <p className="text-xs text-muted-foreground capitalize">
+                        {rel.relationship_type?.replace("_", " ↔ ")}
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -316,9 +331,4 @@ export default function DashboardPage() {
       )}
     </DashboardLayout>
   );
-}
-
-// Fix missing import
-function LayoutDashboard(props: any) {
-  return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>;
 }
