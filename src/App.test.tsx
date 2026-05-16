@@ -71,4 +71,20 @@ describe('App', () => {
     expect(screen.getByText('Warm intro')).toBeVisible();
     expect(screen.getAllByText('Partner ranking detail')).toHaveLength(2);
   });
+
+  it('makes WhatsApp upload a prominent relationship evidence source', async () => {
+    render(<App />);
+
+    expect(screen.getByText('Add relationship evidence')).toBeVisible();
+    expect(screen.getByText('WhatsApp conversation export')).toBeVisible();
+    expect(screen.getByText('Prominent source')).toBeVisible();
+
+    await userEvent.click(screen.getByRole('button', { name: /queue whatsapp export/i }));
+
+    expect(screen.getByText('WhatsApp evidence queued for AI extraction.')).toBeVisible();
+    expect(screen.getByText('Conversation signals')).toBeVisible();
+    expect(screen.getByText('Actors, blockers, commitments, follow-ups, and relationship warmth.')).toBeVisible();
+    expect(screen.getByText('Mentorship signals')).toBeVisible();
+    expect(screen.getByText('Mentor responsiveness, advice quality, unresolved asks, and follow-up gaps.')).toBeVisible();
+  });
 });

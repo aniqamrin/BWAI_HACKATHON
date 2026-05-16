@@ -9,8 +9,10 @@ import {
   Globe2,
   Handshake,
   Link2,
+  MessageCircle,
   Search,
   ShieldCheck,
+  Upload,
   UserCheck,
   Users2,
 } from 'lucide-react';
@@ -89,6 +91,16 @@ type MapLine = {
   strokeDasharray?: string;
 };
 
+type EvidenceSource = {
+  id: string;
+  label: string;
+  title: string;
+  detail: string;
+  state: string;
+  icon: Icon;
+  primary?: boolean;
+};
+
 const externalSignals: Signal[] = [
   {
     label: 'LinkedIn anchor',
@@ -140,6 +152,42 @@ const internalSignals: Signal[] = [
     detail: 'Past mentor outcomes, provider success rate, partner conversion signals.',
     state: 'Learning',
     icon: Database,
+  },
+];
+
+const evidenceSources: EvidenceSource[] = [
+  {
+    id: 'whatsapp',
+    label: 'Prominent source',
+    title: 'WhatsApp conversation export',
+    detail: 'Mentor chats, founder questions, introductions, follow-ups, blockers, and relationship warmth.',
+    state: 'TXT, ZIP, PDF',
+    icon: MessageCircle,
+    primary: true,
+  },
+  {
+    id: 'csv',
+    label: 'Programme record',
+    title: 'CSV programme data',
+    detail: 'Cohort rows, hours synced, confidence scores, milestones, and blocker history.',
+    state: 'CSV',
+    icon: Database,
+  },
+  {
+    id: 'deck',
+    label: 'Uploaded material',
+    title: 'Decks and notes',
+    detail: 'Pitch decks, meeting notes, programme briefs, and service-provider material.',
+    state: 'PDF, DOC',
+    icon: FileText,
+  },
+  {
+    id: 'links',
+    label: 'Web evidence',
+    title: 'LinkedIn and partner links',
+    detail: 'Actor pages, partner mandates, programme rules, and public capability evidence.',
+    state: 'URL',
+    icon: Link2,
   },
 ];
 
@@ -448,6 +496,104 @@ function SignalRow({ signal }: { signal: Signal }) {
   );
 }
 
+function EvidenceIngestionPanel({
+  queuedEvidenceSource,
+  onQueueEvidence,
+}: {
+  queuedEvidenceSource: string | null;
+  onQueueEvidence: (sourceId: string) => void;
+}) {
+  const queuedSource = evidenceSources.find((source) => source.id === queuedEvidenceSource);
+
+  return (
+    <section className="border border-[#17211c] bg-[#fffaf0]">
+      <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
+        <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Evidence ingestion</p>
+        <h2 className="mt-1 text-2xl font-semibold leading-tight">Add relationship evidence</h2>
+        <p className="ui-sans mt-2 max-w-[76ch] text-sm leading-6 text-[#405047]">
+          WhatsApp is prominent because mentorship coordination often lives in chat, while CSV, decks, notes, and links add
+          structured context around it.
+        </p>
+      </div>
+
+      <div className="grid min-w-0 grid-cols-1 divide-y divide-[#cab99d] lg:grid-cols-4 lg:divide-x lg:divide-y-0">
+        {evidenceSources.map((source) => {
+          const IconComponent = source.icon;
+          const isQueued = queuedEvidenceSource === source.id;
+          const isPrimary = Boolean(source.primary);
+
+          return (
+            <article
+              key={source.id}
+              className={`min-w-0 px-4 py-4 ${isPrimary ? 'bg-[#17211c] text-[#fffaf0]' : 'bg-[#fffaf0] text-[#17211c]'}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center border ${isPrimary ? 'border-[#fffaf0]' : 'border-[#17211c]'}`}>
+                  <IconComponent className="h-4 w-4" aria-hidden />
+                </div>
+                <span
+                  className={`ui-sans border px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] ${
+                    isPrimary ? 'border-[#d9cfbd] text-[#fffaf0]' : 'border-[#9d8f77] text-[#657064]'
+                  }`}
+                >
+                  {source.label}
+                </span>
+              </div>
+              <h3 className="ui-sans mt-4 text-sm font-bold">{source.title}</h3>
+              <p className={`ui-sans mt-2 text-xs leading-5 ${isPrimary ? 'text-[#e5decd]' : 'text-[#405047]'}`}>{source.detail}</p>
+              <div className="ui-sans mt-4 flex flex-col gap-2 text-[0.65rem] font-bold uppercase tracking-[0.08em]">
+                <span className={`w-fit border px-2 py-1 ${isPrimary ? 'border-[#d9cfbd]' : 'border-[#9d8f77]'}`}>{source.state}</span>
+                <button
+                  aria-label={`Queue ${source.title.replace('conversation export', 'export')}`}
+                  className={`flex min-h-10 items-center justify-center gap-2 border px-3 py-2 ${
+                    isPrimary
+                      ? 'border-[#fffaf0] bg-[#fffaf0] text-[#17211c]'
+                      : 'border-[#17211c] bg-[#fffaf0] text-[#17211c] hover:bg-[#17211c] hover:text-[#fffaf0] focus-visible:bg-[#17211c] focus-visible:text-[#fffaf0]'
+                  }`}
+                  onClick={() => onQueueEvidence(source.id)}
+                >
+                  <Upload className="h-3.5 w-3.5" aria-hidden />
+                  {isQueued ? 'Queued' : source.id === 'whatsapp' ? 'Queue WhatsApp' : 'Queue source'}
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      {queuedSource ? (
+        <div className="grid gap-3 border-t border-[#9d8f77] bg-[#dce6d8] px-4 py-4 md:grid-cols-3">
+          <div className="md:col-span-3">
+            <p className="ui-sans text-sm font-bold text-[#17211c]">
+              {queuedSource.id === 'whatsapp'
+                ? 'WhatsApp evidence queued for AI extraction.'
+                : `${queuedSource.title} queued for AI extraction.`}
+            </p>
+          </div>
+          <div className="border border-[#45624f] bg-[#fffaf0] px-3 py-3">
+            <p className="ui-sans text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#45624f]">Conversation signals</p>
+            <p className="ui-sans mt-2 text-xs font-bold leading-5 text-[#17211c]">
+              Actors, blockers, commitments, follow-ups, and relationship warmth.
+            </p>
+          </div>
+          <div className="border border-[#45624f] bg-[#fffaf0] px-3 py-3">
+            <p className="ui-sans text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#45624f]">Mentorship signals</p>
+            <p className="ui-sans mt-2 text-xs font-bold leading-5 text-[#17211c]">
+              Mentor responsiveness, advice quality, unresolved asks, and follow-up gaps.
+            </p>
+          </div>
+          <div className="border border-[#45624f] bg-[#fffaf0] px-3 py-3">
+            <p className="ui-sans text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[#45624f]">Privacy guardrail</p>
+            <p className="ui-sans mt-2 text-xs font-bold leading-5 text-[#17211c]">
+              Extract relationship signals, keep judgement and governance with programme admins.
+            </p>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function RelationshipMap({
   evidenceProcessed,
   approvedCount,
@@ -600,6 +746,7 @@ function PartnerRankingsPanel({
 
 export function EcosystemCommandCenter() {
   const [evidenceProcessed, setEvidenceProcessed] = useState(false);
+  const [queuedEvidenceSource, setQueuedEvidenceSource] = useState<string | null>(null);
   const [activeLensId, setActiveLensId] = useState<LensId>('company');
   const [selectedActionId, setSelectedActionId] = useState('provider');
   const [decisions, setDecisions] = useState<Record<string, ActionDecision>>({});
@@ -693,6 +840,7 @@ export function EcosystemCommandCenter() {
               </span>
             </div>
           </div>
+          <EvidenceIngestionPanel queuedEvidenceSource={queuedEvidenceSource} onQueueEvidence={setQueuedEvidenceSource} />
           <button
             className="ui-sans flex min-h-[54px] w-full items-center justify-center gap-2 border border-[#17211c] bg-[#17211c] px-5 py-3 text-sm font-bold uppercase tracking-[0.08em] text-[#fffaf0] shadow-[4px_4px_0_#9d8f77]"
             onClick={() => {
