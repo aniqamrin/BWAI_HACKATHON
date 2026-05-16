@@ -1,11 +1,11 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI } = require('@google/genai');
 const logger = require('../utils/logger');
 
 let genAI = null;
 
 function getGenAI() {
   if (!genAI && process.env.GEMINI_API_KEY) {
-    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   }
   return genAI;
 }
@@ -19,30 +19,36 @@ async function generateContent(prompt, options = {}) {
   }
 
   try {
-    const model = ai.getGenerativeModel({
-      model: options.model || 'gemini-1.5-flash',
-      generationConfig: {
+    const response = await ai.models.generateContent({
+      model: options.model || 'gemini-2.5-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }]
+        }
+      ],
+      config: {
         temperature: options.temperature || 0.3,
         topP: 0.8,
         topK: 40,
         maxOutputTokens: options.maxTokens || 2048,
-        responseMimeType: 'application/json'
+        // NOTE: responseMimeType removed — gemini-2.5-flash adds reasoning tokens
+        // before JSON which breaks strict JSON mode. We extract JSON manually below.
       }
     });
 
-    const result = await model.generateContent(prompt);
-    const response = result.response.text();
+    const text = response.text();
 
-    // Parse JSON response
+    // Parse JSON from response (handles markdown fences and raw JSON)
     try {
-      return JSON.parse(response);
+      const clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      return JSON.parse(clean);
     } catch {
-      // Try to extract JSON from response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
-      throw new Error('Failed to parse AI response as JSON');
+      throw new Error(`Failed to parse AI response as JSON. Raw: ${text.slice(0, 200)}`);
     }
   } catch (error) {
     logger.error('Gemini API error:', error.message);

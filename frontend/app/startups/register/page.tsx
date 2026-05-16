@@ -131,7 +131,7 @@ export default function RegisterStartupPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Team Size</Label>
-                    <Input type="number" min={1} value={form.team_size} onChange={(e) => update("team_size", parseInt(e.target.value))} />
+                    <Input type="number" min={1} value={form.team_size || ""} onChange={(e) => update("team_size", parseInt(e.target.value) || 1)} />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -200,11 +200,11 @@ export default function RegisterStartupPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Funding Raised ($)</Label>
-                    <Input type="number" min={0} value={form.funding_raised} onChange={(e) => update("funding_raised", parseFloat(e.target.value))} />
+                    <Input type="number" min={0} value={form.funding_raised || ""} onChange={(e) => update("funding_raised", parseFloat(e.target.value) || 0)} />
                   </div>
                   <div className="space-y-2">
                     <Label>Funding Needed ($)</Label>
-                    <Input type="number" min={0} value={form.funding_needed} onChange={(e) => update("funding_needed", parseFloat(e.target.value))} />
+                    <Input type="number" min={0} value={form.funding_needed || ""} onChange={(e) => update("funding_needed", parseFloat(e.target.value) || 0)} />
                   </div>
                 </div>
                 <div className="flex justify-between">

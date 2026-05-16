@@ -1,0 +1,338 @@
+openapi: 3.0.0
+info:
+  title: EcosystemOS Tools API
+  description: >
+    Real-time data tools for the EcosystemOS AI agent.
+    Provides access to startups, mentors, programmes, AI match scores, and ecosystem insights.
+  version: 1.0.0
+
+# ─── UPDATE THIS to your public backend URL before uploading to Agent Builder ──
+servers:
+  - url: https://your-backend-url.com
+    description: EcosystemOS backend (replace with ngrok URL for dev, or deployed URL for prod)
+
+# All paths require x-agent-key header — configure this in Agent Builder Tool → Auth
+security:
+  - AgentKeyAuth: []
+
+components:
+  securitySchemes:
+    AgentKeyAuth:
+      type: apiKey
+      in: header
+      name: x-agent-key
+
+paths:
+  /api/agent/tools/ecosystem-overview:
+    get:
+      operationId: getEcosystemOverview
+      summary: Get overall ecosystem statistics
+      description: >
+        Returns aggregate counts and health metrics for the entire ecosystem:
+        total startups, verified startups, mentors, programmes, relationships,
+        average scores, industry distribution, and recently added startups.
+      responses:
+        '200':
+          description: Ecosystem overview statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_startups: { type: integer }
+                  verified_startups: { type: integer }
+                  avg_verification_score: { type: string }
+                  high_risk_startups: { type: integer }
+                  total_mentors: { type: integer }
+                  available_mentors: { type: integer }
+                  avg_mentor_rating: { type: string }
+                  total_programmes: { type: integer }
+                  open_programmes: { type: integer }
+                  ongoing_programmes: { type: integer }
+                  total_relationships: { type: integer }
+                  active_relationships: { type: integer }
+                  ai_generated_matches: { type: integer }
+                  avg_match_score: { type: string }
+                  industry_distribution:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        industry: { type: string }
+                        count: { type: integer }
+
+  /api/agent/tools/startups:
+    get:
+      operationId: listStartups
+      summary: List startups with optional filters
+      description: >
+        Fetch startups from the ecosystem. Filter by industry (e.g. FinTech, HealthTech, EdTech,
+        AgriTech), stage (idea, mvp, seed, series_a, series_b, growth), or country.
+        Returns verification scores, risk levels, and founder info.
+      parameters:
+        - name: industry
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Industry vertical to filter by (partial match, case-insensitive)
+        - name: stage
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [idea, mvp, seed, series_a, series_b, growth]
+          description: Startup stage
+        - name: country
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Country name (partial match)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+            maximum: 20
+          description: Maximum number of results
+      responses:
+        '200':
+          description: List of startups
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  startups:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        startup_name: { type: string }
+                        industry: { type: string }
+                        stage: { type: string }
+                        country: { type: string }
+                        description: { type: string }
+                        verification_score: { type: number }
+                        verification_status: { type: string }
+                        risk_level: { type: string }
+                        traction: { type: string }
+                        funding_raised: { type: number }
+                        founder_name: { type: string }
+                  total: { type: integer }
+
+  /api/agent/tools/mentors:
+    get:
+      operationId: listMentors
+      summary: List mentors in the ecosystem
+      description: >
+        Fetch mentors sorted by rating. Optionally filter by availability.
+        Returns expertise areas, industries, years of experience, and capacity.
+      parameters:
+        - name: availability
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [available, limited, busy, unavailable]
+          description: Filter by availability status
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+            maximum: 20
+      responses:
+        '200':
+          description: List of mentors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mentors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        full_name: { type: string }
+                        title: { type: string }
+                        company: { type: string }
+                        expertise: { type: array, items: { type: string } }
+                        industries: { type: array, items: { type: string } }
+                        years_experience: { type: integer }
+                        availability: { type: string }
+                        rating: { type: number }
+                        total_reviews: { type: integer }
+                        location: { type: string }
+                        current_startups: { type: integer }
+                        max_startups: { type: integer }
+                  total: { type: integer }
+
+  /api/agent/tools/programmes:
+    get:
+      operationId: listProgrammes
+      summary: List accelerator and incubator programmes
+      description: >
+        Fetch active accelerator / incubator programmes.
+        Optionally filter by status (open = accepting applications).
+        Returns funding offered, duration, benefits, and eligibility criteria.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, ongoing, closed]
+          description: Programme status
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+            maximum: 20
+      responses:
+        '200':
+          description: List of programmes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  programmes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        programme_name: { type: string }
+                        organizer: { type: string }
+                        focus_area: { type: array, items: { type: string } }
+                        country: { type: string }
+                        duration_weeks: { type: integer }
+                        funding_offered: { type: number }
+                        cohort_size: { type: integer }
+                        status: { type: string }
+                        benefits: { type: array, items: { type: string } }
+                        eligibility_criteria: { type: string }
+                        deadline: { type: string }
+                  total: { type: integer }
+
+  /api/agent/tools/match-mentors:
+    get:
+      operationId: matchMentorsForStartup
+      summary: Find AI-ranked mentor matches for a startup
+      description: >
+        Uses Gemini AI to score and rank mentors for a specific startup.
+        Returns compatibility scores, reasoning, recommended focus areas, and
+        estimated impact. Requires the startup's UUID.
+      parameters:
+        - name: startup_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the startup to find mentor matches for
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 5
+            maximum: 10
+      responses:
+        '200':
+          description: Ranked mentor matches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        mentor_name: { type: string }
+                        mentor_title: { type: string }
+                        mentor_company: { type: string }
+                        compatibility_score: { type: number }
+                        confidence_score: { type: number }
+                        mentorship_quality: { type: string }
+                        reasoning: { type: string }
+                        recommended_focus_areas: { type: array, items: { type: string } }
+                        estimated_impact: { type: string }
+                  total: { type: integer }
+
+  /api/agent/tools/match-programmes:
+    get:
+      operationId: matchProgrammesForStartup
+      summary: Find AI-ranked programme fits for a startup
+      description: >
+        Uses Gemini AI to score and rank accelerator programmes for a specific startup.
+        Returns fit scores, eligibility assessment, application recommendation, and
+        strategic benefit. Requires the startup's UUID.
+      parameters:
+        - name: startup_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the startup
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 5
+            maximum: 10
+      responses:
+        '200':
+          description: Ranked programme matches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        programme_name: { type: string }
+                        organizer: { type: string }
+                        fit_score: { type: number }
+                        confidence_score: { type: number }
+                        eligibility_assessment: { type: string }
+                        reasoning: { type: string }
+                        application_recommendation: { type: string }
+                  total: { type: integer }
+
+  /api/agent/tools/insights:
+    get:
+      operationId: getEcosystemInsights
+      summary: Get AI-generated strategic insights about the ecosystem
+      description: >
+        Calls Gemini to analyse ecosystem-wide data and generate strategic insights,
+        opportunities, risks, and recommendations for ecosystem growth.
+      responses:
+        '200':
+          description: AI ecosystem insights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ecosystem_health_score: { type: number }
+                  key_insights: { type: array, items: { type: string } }
+                  opportunities: { type: array, items: { type: string } }
+                  risks: { type: array, items: { type: string } }
+                  recommendations: { type: array, items: { type: string } }

@@ -21,6 +21,8 @@ const dashboardRoutes = require('./src/routes/dashboard');
 const graphRoutes = require('./src/routes/graph');
 const investorRoutes = require('./src/routes/investors');
 const firestoreRoutes = require('./src/routes/firestore');
+const agentRoutes = require('./src/routes/agent');
+const agentToolRoutes = require('./src/routes/agentTools');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -31,8 +33,11 @@ app.use(helmet({
 }));
 
 // CORS
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [process.env.FRONTEND_URL].filter(Boolean)
+  : true; // allow all origins in development
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -78,6 +83,8 @@ app.use('/api/relationships', relationshipRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/graph', graphRoutes);
 app.use('/api/firestore', firestoreRoutes);
+app.use('/api/agent', agentRoutes);
+app.use('/api/agent/tools', agentToolRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

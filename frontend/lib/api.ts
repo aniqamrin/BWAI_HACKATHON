@@ -15,6 +15,7 @@ interface ApiOptions {
   method?: string;
   body?: unknown;
   token?: string;
+  timeoutMs?: number;
 }
 
 // Wrap response in standard shape
@@ -143,6 +144,94 @@ function mockHandler(endpoint: string, options: ApiOptions = {}): unknown {
   // GRAPH
   if (endpoint === "/api/graph/network") return ok(MOCK_GRAPH);
 
+  // AGENT — mock tool execution over local mock data
+  if (endpoint === "/api/agent/chat" && method === "POST") {
+    const userMsg = ((b?.message as string) || "").toLowerCase();
+    const sid = (b?.sessionId as string) || "demo-session";
+
+    // listStartups
+    if (userMsg.includes("startup") || userMsg.includes("fintech") || userMsg.includes("agritech") || userMsg.includes("payflow") || userMsg.includes("farmsense") || userMsg.includes("mediconnect") || userMsg.includes("creditbridge") || userMsg.includes("learnpath")) {
+      const industryMatch = ["FinTech","AgriTech","HealthTech","EdTech","CleanTech"].find(i => userMsg.includes(i.toLowerCase()));
+      const filtered = industryMatch ? MOCK_STARTUPS.filter(s => s.industry === industryMatch) : MOCK_STARTUPS;
+      const sorted = [...filtered].sort((a,b) => b.verification_score - a.verification_score);
+      const top = sorted[0];
+
+      // if also asking for mentors, chain the mock match data
+      if (userMsg.includes("mentor") || userMsg.includes("match") || userMsg.includes("find mentor")) {
+        const mentorMatches = MOCK_MENTOR_MATCHES;
+        const reply = [
+          `**Startups${industryMatch ? " in " + industryMatch : ""}** (${sorted.length} found, ranked by verification score):`,
+          ...sorted.map((s,i) => `${i+1}. **${s.startup_name}** — Score: ${s.verification_score} | Stage: ${s.stage} | ${s.country} | ${s.industry}`),
+          "",
+          `**Top mentor matches for ${top.startup_name}** (ID: ${top.id}):`,
+          ...mentorMatches.map((m,i) => `${i+1}. **${m.mentor_name}** (${m.mentor_title} @ ${m.mentor_company}) — Compatibility: **${m.compatibility_score}%** | ${m.mentor_availability} | ${m.years_experience}yrs exp\n   → ${m.reasoning}`),
+        ].join("\n");
+        return ok({ reply, sessionId: sid });
+      }
+
+      const reply = [
+        `**Startups${industryMatch ? " in " + industryMatch : ""}** (${sorted.length} found, ranked by verification score):`,
+        ...sorted.map((s,i) => `${i+1}. **${s.startup_name}** — Score: **${s.verification_score}** | Risk: ${s.risk_level} | Stage: ${s.stage} | ${s.country}\n   ${s.traction}`),
+      ].join("\n");
+      return ok({ reply, sessionId: sid });
+    }
+
+    // listMentors
+    if (userMsg.includes("mentor")) {
+      const available = userMsg.includes("available") ? MOCK_MENTORS.filter(m => m.availability === "available") : MOCK_MENTORS;
+      const reply = [
+        `**Mentors** (${available.length} found):`,
+        ...available.map((m,i) => `${i+1}. **${m.full_name}** — ${m.title} @ ${m.company} | Rating: **${m.rating}** | ${m.availability} | ${m.years_experience}yrs exp\n   Expertise: ${m.expertise.join(", ")}`),
+      ].join("\n");
+      return ok({ reply, sessionId: sid });
+    }
+
+    // listProgrammes
+    if (userMsg.includes("programme") || userMsg.includes("program") || userMsg.includes("accelerator")) {
+      const open = userMsg.includes("open") ? MOCK_PROGRAMMES.filter(p => p.status === "open") : MOCK_PROGRAMMES;
+      const reply = [
+        `**Programmes** (${open.length} found):`,
+        ...open.map((p,i) => `${i+1}. **${p.programme_name}** by ${p.organizer} — Status: **${p.status}** | $${p.funding_offered.toLocaleString()} grant | ${p.duration_weeks} weeks\n   Focus: ${p.focus_area.join(", ")}`),
+      ].join("\n");
+      return ok({ reply, sessionId: sid });
+    }
+
+    // ecosystem overview / dashboard
+    if (userMsg.includes("overview") || userMsg.includes("ecosystem") || userMsg.includes("dashboard") || userMsg.includes("stats") || userMsg.includes("insight") || userMsg.includes("how many") || userMsg.includes("total")) {
+      const s = MOCK_DASHBOARD.stats;
+      const ins = MOCK_DASHBOARD.insights;
+      const reply = [
+        `**EcosystemOS Overview** (Ecosystem Health: **${ins.ecosystem_health_score}/100**)`,
+        "",
+        `📊 **Startups:** ${s.startups.total} total | ${s.startups.verified} verified | Avg score: **${s.startups.avg_score}**`,
+        `👥 **Mentors:** ${s.mentors.total} total | ${s.mentors.available} available | Avg rating: **${s.mentors.avg_rating}**`,
+        `🚀 **Programmes:** ${s.programmes.total} total | ${s.programmes.open} open | ${s.programmes.ongoing} ongoing`,
+        `🤝 **Relationships:** ${s.relationships.total} active | Avg match score: **${s.relationships.avg_match_score}%** | ${s.relationships.excellent_health} excellent health`,
+        "",
+        `**Key Insights:**`,
+        ...ins.key_insights.map(i => `• ${i}`),
+        "",
+        `**Opportunities:**`,
+        ...ins.opportunities.map(o => `• ${o}`),
+      ].join("\n");
+      return ok({ reply, sessionId: sid });
+    }
+
+    // default helpful response
+    return ok({
+      reply: [
+        "I can help you explore the EcosystemOS demo data! Try asking:",
+        "• **How many startups are in the ecosystem?**",
+        "• **Show me FinTech startups**",
+        "• **Show me PayFlow Africa and find mentors for it**",
+        "• **Which mentors are available?**",
+        "• **What are the open programmes?**",
+        "• **Give me ecosystem insights**",
+      ].join("\n"),
+      sessionId: sid,
+    });
+  }
+
   // Default
   return ok({});
 }
@@ -154,7 +243,7 @@ async function apiRequest<T>(endpoint: string, options: ApiOptions = {}): Promis
     return mockHandler(endpoint, options) as T;
   }
 
-  const { method = "GET", body, token } = options;
+  const { method = "GET", body, token, timeoutMs = 5000 } = options;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -172,7 +261,7 @@ async function apiRequest<T>(endpoint: string, options: ApiOptions = {}): Promis
   const config: RequestInit = {
     method,
     headers,
-    signal: AbortSignal.timeout(5000), // 5s timeout
+    signal: AbortSignal.timeout(timeoutMs),
     ...(body && { body: JSON.stringify(body) }),
   };
 
@@ -296,4 +385,13 @@ export const firestoreApi = {
   getActivity: (limit = 20) => apiRequest(`/api/firestore/activity?limit=${limit}`),
   getNotifications: () => apiRequest('/api/firestore/notifications'),
   markRead: (id: string) => apiRequest(`/api/firestore/notifications/${id}/read`, { method: 'PATCH' }),
+};
+
+// ─── Agent ────────────────────────────────────────────────────────────────────
+export const agentApi = {
+  chat: (message: string, sessionId?: string) =>
+    apiRequest<{ success: boolean; data: { reply: string; sessionId: string } }>(
+      '/api/agent/chat',
+      { method: 'POST', body: { message, sessionId }, timeoutMs: 60000 }
+    ),
 };

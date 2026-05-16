@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard, Network, Users, GraduationCap, Briefcase,
-  Building2, GitBranch, BarChart3, Settings, LogOut, Zap, Shield, Sparkles, Activity
+  Building2, GitBranch, BarChart3, Settings, LogOut, Zap, Shield, Sparkles, Activity, Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,6 +21,7 @@ const navItems = [
   { href: "/relationships", label: "Relationships", icon: GitBranch },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/analysis", label: "Behavioral Signals", icon: Activity },
+  { href: "/agent", label: "AI Agent", icon: Bot },
 ];
 
 const adminItems = [

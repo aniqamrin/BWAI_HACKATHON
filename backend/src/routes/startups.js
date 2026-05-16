@@ -95,7 +95,7 @@ router.post('/create', authenticate, [
     } = req.body;
 
     // Check if user already has a startup
-    const existing = await query('SELECT id FROM startups WHERE user_id = $1', [req.user.id]);
+    const existing = await query('SELECT id FROM startups WHERE user_id = $1 AND is_active = true', [req.user.id]);
     if (existing.rows[0]) {
       return badRequest(res, 'You already have a registered startup');
     }
