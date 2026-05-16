@@ -101,6 +101,32 @@ const primaryActionsByLens: Record<LensId, string> = {
   evidence: "action-greenbridge-carbonloop",
 };
 
+const startupBriefs = {
+  "startup-atlas-ai": {
+    label: "Atlas AI",
+    stage: "Seed",
+    need: "Procurement risk is slowing enterprise pilots.",
+    mentor: "Priya Raman",
+    partner: "No partner intro yet",
+  },
+  "startup-carbonloop": {
+    label: "CarbonLoop",
+    stage: "Pre-seed",
+    need: "Grant deadline needs climate finance proof.",
+    mentor: "Farah Lim",
+    partner: "GreenBridge Labs",
+  },
+  "startup-nora-health": {
+    label: "Nora Health",
+    stage: "Seed",
+    need: "Clinical language needs compliance review.",
+    mentor: "Alicia Mensah",
+    partner: "Hold partner intros",
+  },
+} satisfies Record<string, { label: string; stage: string; need: string; mentor: string; partner: string }>;
+
+const startupIds = ["startup-atlas-ai", "startup-carbonloop", "startup-nora-health"];
+
 function parseCsvRows(csvText: string) {
   const rows: string[][] = [];
   let cell = "";
@@ -297,6 +323,14 @@ function getRelationshipById(id: string | undefined) {
   return relationshipOsSnapshot.relationships.find((relationship) => relationship.id === id) ?? null;
 }
 
+function getDefaultActionForContext(lensId: LensId, startupId: string) {
+  const startupActions = relationshipOsSnapshot.actions.filter((action) => action.actorIds.includes(startupId));
+  const primaryAction = relationshipOsSnapshot.actions.find((action) => action.id === primaryActionsByLens[lensId] && action.actorIds.includes(startupId));
+  const directAction = startupActions.find((action) => action.lensId === lensId);
+
+  return primaryAction ?? directAction ?? startupActions[0] ?? relationshipOsSnapshot.actions[0];
+}
+
 function StatusPill({ status }: { status: ActionStatus | "Approved" | "Evidence requested" }) {
   return (
     <span className={cn("inline-flex items-center border px-2 py-1 text-[0.64rem] font-bold uppercase tracking-[0.1em]", statusClasses[status])}>
@@ -412,8 +446,8 @@ function LensBar({
 }) {
   const tabCopy: Record<LensId, { title: string; detail: string; metric: string }> = {
     relationships: {
-      title: "Actions",
-      detail: "What should happen next",
+      title: "Decision",
+      detail: "What to do next",
       metric: `${relationshipOsSnapshot.actions.filter((action) => action.lensId === "relationships").length} queued`,
     },
     "mentor-ranking": {
@@ -465,6 +499,58 @@ function LensBar({
       })}
       </div>
     </nav>
+  );
+}
+
+function StartupSelector({
+  selectedStartupId,
+  onSelectStartup,
+}: {
+  selectedStartupId: string;
+  onSelectStartup: (startupId: string) => void;
+}) {
+  const selectedStartup = startupBriefs[selectedStartupId];
+
+  return (
+    <section id="relationship-os-company-picker" className="border border-[#17211c] bg-[#fffaf0]">
+      <div className="flex flex-col gap-1 border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-[0.64rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Company first</p>
+          <h2 className="mt-1 text-xl font-semibold leading-tight text-[#17211c]">Showing recommendations for {selectedStartup.label}</h2>
+        </div>
+        <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">{selectedStartup.need}</p>
+      </div>
+
+      <div className="grid gap-2 p-2 md:grid-cols-3">
+        {startupIds.map((startupId) => {
+          const startup = startupBriefs[startupId];
+          const isSelected = selectedStartupId === startupId;
+
+          return (
+            <button
+              key={startupId}
+              type="button"
+              className={cn(
+                "grid gap-2 border px-3 py-3 text-left transition-colors",
+                isSelected ? "border-[#17211c] bg-[#17211c] text-[#fffaf0]" : "border-[#cab99d] bg-[#fffaf0] text-[#17211c] hover:bg-[#fbf4e7]",
+              )}
+              onClick={() => onSelectStartup(startupId)}
+            >
+              <span className="flex items-center justify-between gap-3">
+                <span className="text-base font-semibold leading-tight">{startup.label}</span>
+                <span className={cn("border px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.1em]", isSelected ? "border-[#d9cfbd] text-[#d9cfbd]" : "border-[#9d8f77] text-[#59675e]")}>
+                  {startup.stage}
+                </span>
+              </span>
+              <span className={cn("text-xs leading-5", isSelected ? "text-[#e5decd]" : "text-[#405047]")}>{startup.need}</span>
+              <span className={cn("text-[0.62rem] font-bold uppercase tracking-[0.1em]", isSelected ? "text-[#d9cfbd]" : "text-[#59675e]")}>
+                Mentor fit: {startup.mentor}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -639,6 +725,7 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
 }
 
 type RecommendationCopy = {
+  contextLabel: string;
   eyebrow: string;
   title: string;
   summary: string;
@@ -650,10 +737,131 @@ type RecommendationCopy = {
   detailLabel: string;
 };
 
-function getRecommendationCopy(activeLens: LensId, action: Action): RecommendationCopy {
+function getRecommendationCopy(activeLens: LensId, action: Action, selectedStartupId: string): RecommendationCopy {
+  if (selectedStartupId === "startup-carbonloop") {
+    if (activeLens === "mentor-ranking") {
+      return {
+        contextLabel: "For CarbonLoop",
+        eyebrow: "Mentor fit",
+        title: "Deploy Farah for the climate finance sprint",
+        summary: "CarbonLoop needs grant framing and finance proof before the June deadline.",
+        status: action.status,
+        confidence: action.confidence,
+        reasons: ["The blocker is finance-specific.", "Farah matches climate grants and capital readiness.", "GreenBridge can validate the pilot once economics are ready."],
+        primaryLabel: "Assign Farah",
+        primaryDecision: "approved",
+        detailLabel: "Show ranking details",
+      };
+    }
+
+    if (activeLens === "partner-intros") {
+      return {
+        contextLabel: "For CarbonLoop",
+        eyebrow: "Partner intro",
+        title: "Hold GreenBridge until one proof point is ready",
+        summary: "The partner is a fit, but the intro should wait until warehouse pilot economics are clear.",
+        status: action.status,
+        confidence: action.confidence,
+        reasons: ["GreenBridge fits the circular logistics pilot.", "Grant timing makes the intro useful.", "Pilot economics are still missing."],
+        primaryLabel: "Request pilot economics",
+        primaryDecision: "needs_evidence",
+        detailLabel: "Show partner rationale",
+      };
+    }
+
+    if (activeLens === "evidence") {
+      return {
+        contextLabel: "For CarbonLoop",
+        eyebrow: "Evidence readout",
+        title: "Evidence supports mentor action, not partner approval yet",
+        summary: "The CSV shows urgency and finance need; partner evidence still needs one stronger proof point.",
+        status: "Review suggested",
+        confidence: 82,
+        reasons: ["CSV sync confirms the grant deadline.", "Blocker text points to finance readiness.", "Partner intro needs warehouse pilot economics."],
+        primaryLabel: "Review missing evidence",
+        primaryDecision: "needs_evidence",
+        detailLabel: "Show evidence",
+      };
+    }
+
+    return {
+      contextLabel: "For CarbonLoop",
+      eyebrow: "Recommended next step",
+      title: "Move CarbonLoop into climate finance sprint",
+      summary: "The right move is to pair CarbonLoop with Farah and use GreenBridge only after the pilot proof is ready.",
+      status: action.status,
+      confidence: action.confidence,
+      reasons: ["The company has a near-term grant deadline.", "The blocker is specific enough to act on.", "Farah is the strongest mentor match."],
+      primaryLabel: "Approve finance sprint",
+      primaryDecision: "approved",
+      detailLabel: "Show why",
+    };
+  }
+
+  if (selectedStartupId === "startup-nora-health") {
+    if (activeLens === "mentor-ranking") {
+      return {
+        contextLabel: "For Nora Health",
+        eyebrow: "Mentor fit",
+        title: "Use Alicia for review, not a broad intro",
+        summary: "Nora needs clinical compliance judgment before the programme sends new hospital introductions.",
+        status: action.status,
+        confidence: action.confidence,
+        reasons: ["The blocker is compliance language.", "Alicia is the best clinical product advisor.", "The next move should stay human-reviewed."],
+        primaryLabel: "Assign Alicia review",
+        primaryDecision: "approved",
+        detailLabel: "Show ranking details",
+      };
+    }
+
+    if (activeLens === "partner-intros") {
+      return {
+        contextLabel: "For Nora Health",
+        eyebrow: "Partner intro",
+        title: "Do not send hospital intros yet",
+        summary: "The fit may be strong later, but the current evidence says the language needs review first.",
+        status: "Manual evidence needed",
+        confidence: 70,
+        reasons: ["Clinical claims sound too absolute.", "Alicia should review the one-pager first.", "A premature intro creates governance risk."],
+        primaryLabel: "Request review first",
+        primaryDecision: "needs_evidence",
+        detailLabel: "Show rationale",
+      };
+    }
+
+    if (activeLens === "evidence") {
+      return {
+        contextLabel: "For Nora Health",
+        eyebrow: "Evidence readout",
+        title: "Evidence supports a review before introductions",
+        summary: "The model is not saying Nora lacks fit; it is saying the next action should reduce compliance risk.",
+        status: "Review suggested",
+        confidence: 76,
+        reasons: ["WhatsApp/TXT evidence flags clinical language risk.", "The founder has hospital interest.", "The missing step is advisor review."],
+        primaryLabel: "Request advisor review",
+        primaryDecision: "needs_evidence",
+        detailLabel: "Show evidence",
+      };
+    }
+
+    return {
+      contextLabel: "For Nora Health",
+      eyebrow: "Recommended next step",
+      title: "Review clinical language before intros",
+      summary: "The safest useful action is to have Alicia review Nora's one-pager before any hospital intro goes out.",
+      status: action.status,
+      confidence: action.confidence,
+      reasons: ["Nora has real buyer interest.", "Compliance language is the active blocker.", "Alicia is the correct expert for the risk."],
+      primaryLabel: "Approve review",
+      primaryDecision: "approved",
+      detailLabel: "Show why",
+    };
+  }
+
   if (activeLens === "mentor-ranking") {
     return {
-      eyebrow: "Recommendation",
+      contextLabel: "For Atlas AI",
+      eyebrow: "Mentor fit",
       title: "Deploy Priya first",
       summary: "Priya is the clearest mentor to activate because the need, fit, and timing all line up.",
       status: action.status,
@@ -667,13 +875,14 @@ function getRecommendationCopy(activeLens: LensId, action: Action): Recommendati
 
   if (activeLens === "partner-intros") {
     return {
-      eyebrow: "Recommendation",
-      title: "Do not send the GreenBridge intro yet",
-      summary: "The partner fit is promising, but the intro should wait until one missing proof point is collected.",
-      status: action.status,
-      confidence: action.confidence,
-      reasons: ["GreenBridge is relevant to CarbonLoop's pilot.", "The grant timeline makes the intro useful.", "Warehouse pilot economics are still missing."],
-      primaryLabel: "Request missing evidence",
+      contextLabel: "For Atlas AI",
+      eyebrow: "Partner intro",
+      title: "No partner intro yet",
+      summary: "Atlas needs mentor help on procurement before the programme creates external partner motion.",
+      status: "Manual evidence needed",
+      confidence: 67,
+      reasons: ["The active blocker is buyer risk, not partner access.", "Priya should sharpen the security narrative first.", "A partner intro would be premature."],
+      primaryLabel: "Hold partner intro",
       primaryDecision: "needs_evidence",
       detailLabel: "Show partner rationale",
     };
@@ -681,20 +890,22 @@ function getRecommendationCopy(activeLens: LensId, action: Action): Recommendati
 
   if (activeLens === "evidence") {
     return {
+      contextLabel: "For Atlas AI",
       eyebrow: "Evidence readout",
-      title: "Two decisions are supported, one needs more proof",
-      summary: "The CSV and WhatsApp/TXT evidence is enough for mentor action, but partner approval still needs validation.",
-      status: "Review suggested",
-      confidence: 84,
-      reasons: ["CSV syncs support the mentor matches.", "WhatsApp/TXT evidence confirms real blockers.", "Partner intro evidence is still incomplete."],
-      primaryLabel: "Review missing evidence",
-      primaryDecision: "needs_evidence",
+      title: "Evidence supports a Priya follow-up",
+      summary: "The evidence points to one clear action: help Atlas explain procurement and deployment risk.",
+      status: action.status,
+      confidence: action.confidence,
+      reasons: ["WhatsApp/TXT evidence repeats procurement delay.", "CSV confidence scores are high.", "The blocker maps directly to Priya's expertise."],
+      primaryLabel: "Approve mentor follow-up",
+      primaryDecision: "approved",
       detailLabel: "Show evidence",
     };
   }
 
   return {
-    eyebrow: "Recommendation",
+    contextLabel: "For Atlas AI",
+    eyebrow: "Recommended next step",
     title: "Create Priya to Atlas follow-up",
     summary: "This is the cleanest next move: the problem is specific, the mentor fit is strong, and the confidence is high.",
     status: action.status,
@@ -729,6 +940,9 @@ function PrimaryRecommendationCard({
               {recommendation.confidence}% confidence
             </span>
           </div>
+          <p className="mt-4 w-fit border border-[#9d8f77] bg-[#f7f1e5] px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[#59675e]">
+            {recommendation.contextLabel}
+          </p>
           <p className="mt-5 text-[0.66rem] font-bold uppercase tracking-[0.16em] text-[#657064]">{recommendation.eyebrow}</p>
           <h2 className="mt-2 max-w-3xl text-3xl font-semibold leading-tight text-[#17211c] md:text-4xl">{recommendation.title}</h2>
           <p className="mt-3 max-w-[68ch] text-base leading-7 text-[#405047]">{recommendation.summary}</p>
@@ -1026,6 +1240,7 @@ function IngestionPanel({
 }
 
 export default function RelationshipOSDemo() {
+  const [selectedStartupId, setSelectedStartupId] = useState("startup-atlas-ai");
   const [activeLens, setActiveLens] = useState<LensId>("relationships");
   const [selectedActionId, setSelectedActionId] = useState("action-atlas-priya");
   const [queuedEvidenceSource, setQueuedEvidenceSource] = useState<string | null>("whatsapp-export");
@@ -1040,27 +1255,39 @@ export default function RelationshipOSDemo() {
   const [expandedLens, setExpandedLens] = useState<LensId | null>(null);
   const [rawInfoOpen, setRawInfoOpen] = useState(false);
 
+  const startupActions = useMemo(
+    () => relationshipOsSnapshot.actions.filter((action) => action.actorIds.includes(selectedStartupId)),
+    [selectedStartupId],
+  );
+
   const visibleActions = useMemo(() => {
-    const scopedActions =
-      activeLens === "evidence"
-        ? relationshipOsSnapshot.actions
-        : relationshipOsSnapshot.actions.filter((action) => action.lensId === activeLens);
+    const scopedActions = activeLens === "evidence" ? startupActions : startupActions.filter((action) => action.lensId === activeLens);
 
-    return scopedActions.length > 0 ? scopedActions : relationshipOsSnapshot.actions;
-  }, [activeLens]);
+    return scopedActions.length > 0 ? scopedActions : startupActions.length > 0 ? startupActions : relationshipOsSnapshot.actions;
+  }, [activeLens, startupActions]);
 
-  const selectedAction = visibleActions.find((action) => action.id === selectedActionId) ?? visibleActions[0];
+  const defaultAction = getDefaultActionForContext(activeLens, selectedStartupId);
+  const selectedAction = visibleActions.find((action) => action.id === selectedActionId) ?? defaultAction;
   const selectedRelationship = getRelationshipById(selectedAction.relationshipId);
   const selectedSignals = selectedAction.signals
     .map((signalId) => relationshipOsSnapshot.signals.find((signal) => signal.id === signalId))
     .filter((signal): signal is Signal => Boolean(signal));
-  const recommendation = getRecommendationCopy(activeLens, selectedAction);
+  const recommendation = getRecommendationCopy(activeLens, selectedAction, selectedStartupId);
 
   function selectLens(lensId: LensId) {
     setActiveLens(lensId);
     setExpandedLens(null);
-    const primaryAction = relationshipOsSnapshot.actions.find((action) => action.id === primaryActionsByLens[lensId]);
-    const firstAction = primaryAction ?? relationshipOsSnapshot.actions.find((action) => lensId === "evidence" || action.lensId === lensId);
+    const firstAction = getDefaultActionForContext(lensId, selectedStartupId);
+
+    if (firstAction) {
+      setSelectedActionId(firstAction.id);
+    }
+  }
+
+  function selectStartup(startupId: string) {
+    setSelectedStartupId(startupId);
+    setExpandedLens(null);
+    const firstAction = getDefaultActionForContext(activeLens, startupId);
 
     if (firstAction) {
       setSelectedActionId(firstAction.id);
@@ -1078,27 +1305,24 @@ export default function RelationshipOSDemo() {
     }, 0);
   }
 
-  function jumpToHeaderMetric(target: "actors" | "signals" | "actions") {
-    if (target === "actions") {
+  function jumpToHeaderMetric(target: "companies" | "mentors" | "decisions") {
+    if (target === "decisions") {
       setActiveLens("relationships");
-      setSelectedActionId("action-atlas-priya");
+      setSelectedActionId(getDefaultActionForContext("relationships", selectedStartupId).id);
       setExpandedLens(null);
       scrollToSection("relationship-os-page");
       return;
     }
 
-    if (target === "signals") {
-      setActiveLens("evidence");
-      setSelectedActionId(primaryActionsByLens.evidence);
-      setExpandedLens("evidence");
-      scrollToSection("relationship-os-detail");
+    if (target === "mentors") {
+      setActiveLens("mentor-ranking");
+      setSelectedActionId(getDefaultActionForContext("mentor-ranking", selectedStartupId).id);
+      setExpandedLens(null);
+      scrollToSection("relationship-os-page");
       return;
     }
 
-    setActiveLens("relationships");
-    setSelectedActionId("action-atlas-priya");
-    setExpandedLens("relationships");
-    scrollToSection("relationship-os-detail");
+    scrollToSection("relationship-os-company-picker");
   }
 
   function showDetails() {
@@ -1217,27 +1441,29 @@ export default function RelationshipOSDemo() {
               Relationship OS for ecosystem operators
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#405047] md:text-base">
-              One recommendation at a time. Open the proof only when someone asks for it.
+              Pick a company first, then see who to deploy, why they fit, and what proof supports the decision.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 lg:max-w-[360px] lg:justify-end">
             <CompactMetricButton
-              label="Actors"
-              value={`${relationshipOsSnapshot.actors.length}`}
-              onClick={() => jumpToHeaderMetric("actors")}
+              label="Companies"
+              value={`${startupIds.length}`}
+              onClick={() => jumpToHeaderMetric("companies")}
             />
             <CompactMetricButton
-              label="Signals"
-              value={`${relationshipOsSnapshot.signals.length}`}
-              onClick={() => jumpToHeaderMetric("signals")}
+              label="Mentors"
+              value={`${relationshipOsSnapshot.mentorRankings.length}`}
+              onClick={() => jumpToHeaderMetric("mentors")}
             />
             <CompactMetricButton
-              label="Actions"
+              label="Decisions"
               value={`${relationshipOsSnapshot.actions.length}`}
-              onClick={() => jumpToHeaderMetric("actions")}
+              onClick={() => jumpToHeaderMetric("decisions")}
             />
           </div>
         </header>
+
+        <StartupSelector selectedStartupId={selectedStartupId} onSelectStartup={selectStartup} />
 
         <LensBar activeLens={activeLens} onSelectLens={selectLens} />
 
