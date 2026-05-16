@@ -151,4 +151,40 @@ describe('useCohortDemo', () => {
     expect(result.current.drawerOpen).toBe(false);
     expect(result.current.relationships).toEqual(baselineRelationships);
   });
+
+  it('falls back to baseline when persisted evaluation relationships are malformed', () => {
+    localStorage.setItem(
+      'cohort-atlas-demo-state',
+      JSON.stringify({
+        relationships: baselineRelationships,
+        evaluation: {
+          processedRows: 1,
+          cohortHealth: 82,
+          confidence: 92,
+          executiveSummary: 'Malformed saved evaluation',
+          relationshipEvaluations: [{}],
+        },
+      }),
+    );
+
+    const { result } = renderHook(() => useCohortDemo());
+
+    expect(result.current.phase).toBe('baseline');
+    expect(result.current.drawerOpen).toBe(false);
+    expect(result.current.relationships).toEqual(baselineRelationships);
+  });
+
+  it('closes the drawer and resets processing steps when entering error state', async () => {
+    const { result } = renderHook(() => useCohortDemo());
+    await processSampleRows(result);
+
+    act(() => {
+      result.current.failWithMessage('Bad CSV');
+    });
+
+    expect(result.current.phase).toBe('error');
+    expect(result.current.errorMessage).toBe('Bad CSV');
+    expect(result.current.drawerOpen).toBe(false);
+    expect(result.current.steps.every((step) => step.status === 'pending')).toBe(true);
+  });
 });

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { evaluateCohortSync } from '../domain/evaluator';
 import { baselineRelationships, statusFromHealth } from '../domain/sampleCohort';
-import type { CohortEvaluation, CohortSyncRow, Relationship } from '../domain/types';
+import type { CohortEvaluation, CohortSyncRow, Relationship, RelationshipEvaluation } from '../domain/types';
 
 export type DemoPhase = 'baseline' | 'processing' | 'processed' | 'error';
 
@@ -75,6 +75,30 @@ function isRelationship(value: unknown): value is Relationship {
   );
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function isRelationshipEvaluation(value: unknown): value is RelationshipEvaluation {
+  if (!value || typeof value !== 'object') return false;
+  const evaluation = value as Partial<RelationshipEvaluation>;
+  const signals = evaluation.signals as Partial<RelationshipEvaluation['signals']> | undefined;
+
+  return (
+    typeof evaluation.relationshipId === 'string' &&
+    typeof evaluation.engagement_health === 'number' &&
+    typeof evaluation.previous_health === 'number' &&
+    typeof evaluation.health_delta === 'number' &&
+    typeof evaluation.confidence === 'number' &&
+    typeof evaluation.reasoning === 'string' &&
+    typeof evaluation.recommended_action === 'string' &&
+    Boolean(signals) &&
+    typeof signals === 'object' &&
+    isStringArray(signals.positive) &&
+    isStringArray(signals.negative)
+  );
+}
+
 function isEvaluation(value: unknown): value is CohortEvaluation {
   if (!value || typeof value !== 'object') return false;
   const evaluation = value as Partial<CohortEvaluation>;
@@ -83,7 +107,8 @@ function isEvaluation(value: unknown): value is CohortEvaluation {
     typeof evaluation.cohortHealth === 'number' &&
     typeof evaluation.confidence === 'number' &&
     typeof evaluation.executiveSummary === 'string' &&
-    Array.isArray(evaluation.relationshipEvaluations)
+    Array.isArray(evaluation.relationshipEvaluations) &&
+    evaluation.relationshipEvaluations.every(isRelationshipEvaluation)
   );
 }
 
@@ -219,6 +244,8 @@ export function useCohortDemo() {
       clearTimers();
       setPhase('error');
       setErrorMessage(message);
+      setDrawerOpen(false);
+      setSteps(freshSteps());
     },
     [clearTimers],
   );
