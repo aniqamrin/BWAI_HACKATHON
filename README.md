@@ -157,6 +157,37 @@ GET /api/dashboard/insights    AI-generated ecosystem insights
 GET /api/graph/network    Full ecosystem graph (nodes + edges)
 ```
 
+### Relationship OS Evidence Pipeline
+```
+GET  /api/ecosystems/:ecosystemId/snapshot
+POST /api/ecosystems/:ecosystemId/evidence/process
+POST /api/ecosystems/:ecosystemId/rank/mentors
+POST /api/ecosystems/:ecosystemId/rank/partners
+POST /api/ecosystems/:ecosystemId/decisions
+```
+
+`/evidence/process` accepts JSON (`urls`, `csvText`, `whatsappText`, `notes`) or multipart `files`.
+The backend fetches and extracts clean text and metadata first, then sends that extracted content to Gemini for strict JSON analysis. Gemini is not asked to crawl directly. Processed records are shaped for:
+
+```
+ecosystems/{ecosystemId}
+ecosystems/{ecosystemId}/actors/{actorId}
+ecosystems/{ecosystemId}/evidenceSources/{evidenceSourceId}
+ecosystems/{ecosystemId}/lenses/{lensId}
+ecosystems/{ecosystemId}/recommendations/{recommendationId}
+ecosystems/{ecosystemId}/decisions/{decisionId}
+```
+
+There are two backend verification modes:
+
+```
+cd backend
+npm run test:ecosystem-demo
+npm run test:ecosystem-live
+```
+
+`test:ecosystem-demo` verifies the Express endpoint, extraction, mock AI fallback, recommendation links, and snapshot shape without Google credentials. `test:ecosystem-live` requires `GEMINI_API_KEY`, `GOOGLE_CLOUD_PROJECT`, and Firestore credentials; it fails instead of falling back to mock data.
+
 ---
 
 ## AI Workflow

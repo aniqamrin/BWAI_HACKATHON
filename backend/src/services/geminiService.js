@@ -14,6 +14,9 @@ async function generateContent(prompt, options = {}) {
   const ai = getGenAI();
 
   if (!ai) {
+    if (options.requireLive) {
+      throw new Error('GEMINI_API_KEY is required for live Gemini verification');
+    }
     logger.warn('Gemini API key not configured, using mock response');
     return getMockResponse(options.mockType || 'generic');
   }
@@ -46,6 +49,9 @@ async function generateContent(prompt, options = {}) {
     }
   } catch (error) {
     logger.error('Gemini API error:', error.message);
+    if (options.requireLive) {
+      throw error;
+    }
     // Return mock data as fallback
     return getMockResponse(options.mockType || 'generic');
   }
@@ -105,6 +111,109 @@ function getMockResponse(type) {
         'Recruit 3-5 additional mentors in HealthTech and EdTech',
         'Launch West Africa expansion programme',
         'Establish investor relations programme'
+      ]
+    },
+    ecosystem_analysis: {
+      actors: [
+        {
+          id: 'startup_demo',
+          type: 'startup',
+          name: 'Demo Startup',
+          summary: 'Startup extracted from submitted evidence.',
+          tags: ['evidence-linked'],
+          evidenceSourceIds: []
+        },
+        {
+          id: 'mentor_demo',
+          type: 'mentor',
+          name: 'Demo Mentor',
+          summary: 'Mentor extracted from submitted evidence.',
+          tags: ['mentor-fit'],
+          evidenceSourceIds: []
+        },
+        {
+          id: 'partner_demo',
+          type: 'partner',
+          name: 'Demo Partner',
+          summary: 'Partner extracted from submitted evidence.',
+          tags: ['partner-pathway'],
+          evidenceSourceIds: []
+        }
+      ],
+      evidenceSources: [],
+      signals: [
+        {
+          id: 'signal_demo_blocker',
+          type: 'blocker',
+          actorIds: ['startup_demo', 'mentor_demo'],
+          evidenceSourceIds: [],
+          label: 'Blocker identified in processed evidence',
+          detail: 'The submitted material contains enough context to flag a relationship blocker for review.',
+          strength: 0.78
+        }
+      ],
+      recommendations: [
+        {
+          id: 'recommendation_demo_mentor',
+          type: 'mentor_match',
+          title: 'Review mentor fit from processed evidence',
+          actorIds: ['startup_demo', 'mentor_demo'],
+          evidenceSourceIds: [],
+          confidence: 82,
+          status: 'review_suggested',
+          rationale: 'The evidence graph shows a plausible mentor relationship but still needs human approval.',
+          nextStep: 'Review the linked evidence and approve or request more information.'
+        },
+        {
+          id: 'recommendation_demo_partner',
+          type: 'partner_pathway',
+          title: 'Evaluate partner pathway',
+          actorIds: ['startup_demo', 'partner_demo'],
+          evidenceSourceIds: [],
+          confidence: 74,
+          status: 'manual_evidence_needed',
+          rationale: 'Partner fit is promising, but more timing and governance evidence is needed.',
+          nextStep: 'Ask for partner mandate, timing, and decision owner evidence.'
+        }
+      ],
+      rankings: {
+        mentors: [
+          {
+            actorId: 'mentor_demo',
+            startupId: 'startup_demo',
+            rank: 1,
+            score: 82,
+            confidence: 78,
+            rationale: 'Ranked by evidence fit, cadence, warmth, expertise, and risk.',
+            evidenceSourceIds: []
+          }
+        ],
+        partners: [
+          {
+            actorId: 'partner_demo',
+            startupId: 'startup_demo',
+            rank: 1,
+            score: 74,
+            confidence: 69,
+            rationale: 'Ranked by mandate fit, timing, evidence quality, and governance risk.',
+            evidenceSourceIds: []
+          }
+        ]
+      },
+      rationale: [
+        {
+          recommendationId: 'recommendation_demo_mentor',
+          reasoning: 'The recommendation is based on processed evidence, not raw crawler output.'
+        }
+      ],
+      missingEvidence: [
+        {
+          id: 'missing_demo_approval_context',
+          actorIds: ['startup_demo'],
+          recommendationId: 'recommendation_demo_partner',
+          question: 'Who owns approval and what evidence is required before the partner intro?',
+          priority: 'medium'
+        }
       ]
     },
     generic: {

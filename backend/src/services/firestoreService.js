@@ -173,8 +173,117 @@ async function markNotificationRead(userId, notificationId) {
   });
 }
 
+function ecosystemRef(firestore, ecosystemId) {
+  return firestore.collection('ecosystems').doc(ecosystemId);
+}
+
+async function writeCollection(rootRef, collectionName, rows) {
+  const batch = rootRef.firestore.batch();
+  rows.forEach((row) => {
+    if (!row?.id) return;
+    batch.set(rootRef.collection(collectionName).doc(row.id), {
+      ...row,
+      updated_at: FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+  await batch.commit();
+}
+
+async function upsertEcosystemSnapshot(ecosystemId, snapshot) {
+  return safeWrite(async (firestore) => {
+    const rootRef = ecosystemRef(firestore, ecosystemId);
+    await rootRef.set({
+      id: ecosystemId,
+      name: snapshot.name || ecosystemId,
+      updated_at: FieldValue.serverTimestamp(),
+      generated_at: snapshot.generatedAt || new Date().toISOString(),
+      counts: {
+        actors: snapshot.actors?.length || 0,
+        evidenceSources: snapshot.evidenceSources?.length || 0,
+        recommendations: snapshot.recommendations?.length || 0,
+        decisions: snapshot.decisions?.length || 0,
+      },
+      rankings: snapshot.rankings || { mentors: [], partners: [] },
+      signals: snapshot.signals || [],
+      missingEvidence: snapshot.missingEvidence || [],
+      rationale: snapshot.rationale || [],
+    }, { merge: true });
+
+    await Promise.all([
+      writeCollection(rootRef, 'actors', snapshot.actors || []),
+      writeCollection(rootRef, 'evidenceSources', snapshot.evidenceSources || []),
+      writeCollection(rootRef, 'lenses', snapshot.lenses || []),
+      writeCollection(rootRef, 'recommendations', snapshot.recommendations || []),
+      writeCollection(rootRef, 'decisions', snapshot.decisions || []),
+    ]);
+
+    return { ok: true };
+  });
+}
+
+async function readCollection(rootRef, collectionName) {
+  const snap = await rootRef.collection(collectionName).get();
+  return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+}
+
+async function getEcosystemSnapshotFromFirestore(ecosystemId) {
+  const firestore = getFirestore();
+  if (!firestore) return null;
+
+  try {
+    const rootRef = ecosystemRef(firestore, ecosystemId);
+    const rootSnap = await rootRef.get();
+    if (!rootSnap.exists) return null;
+    const root = rootSnap.data();
+    const [actors, evidenceSources, lenses, recommendations, decisions] = await Promise.all([
+      readCollection(rootRef, 'actors'),
+      readCollection(rootRef, 'evidenceSources'),
+      readCollection(rootRef, 'lenses'),
+      readCollection(rootRef, 'recommendations'),
+      readCollection(rootRef, 'decisions'),
+    ]);
+
+    return {
+      id: ecosystemId,
+      name: root.name || ecosystemId,
+      generatedAt: root.generated_at || new Date().toISOString(),
+      actors,
+      evidenceSources,
+      lenses,
+      recommendations,
+      decisions,
+      signals: root.signals || [],
+      rankings: root.rankings || { mentors: [], partners: [] },
+      rationale: root.rationale || [],
+      missingEvidence: root.missingEvidence || [],
+    };
+  } catch (err) {
+    logger.error('Firestore ecosystem read error:', err.message);
+    return null;
+  }
+}
+
+async function recordEcosystemDecision(ecosystemId, decision) {
+  return safeWrite(async (firestore) => {
+    const rootRef = ecosystemRef(firestore, ecosystemId);
+    await rootRef.collection('decisions').doc(decision.id).set({
+      ...decision,
+      created_at: FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    await logActivity({
+      type: 'ecosystem_decision',
+      title: 'Relationship OS decision recorded',
+      description: `${decision.decision} for ${decision.recommendationId}`,
+      meta: { ecosystemId, recommendationId: decision.recommendationId },
+      userId: decision.adminId || null,
+    });
+  });
+}
+
 module.exports = {
   getFirestore, logActivity, updateRelationshipHealth,
   notifyUser, incrementStat, broadcastMatch, broadcastVerification,
   getRecentActivity, getUserNotifications, markNotificationRead,
+  upsertEcosystemSnapshot, getEcosystemSnapshotFromFirestore, recordEcosystemDecision,
 };
