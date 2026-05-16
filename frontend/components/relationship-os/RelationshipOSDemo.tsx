@@ -94,6 +94,14 @@ const statusClasses: Record<ActionStatus | "Approved" | "Evidence requested", st
   "Evidence requested": "border-[#934439] bg-[#fffaf0] text-[#743025]",
 };
 
+const statusLabels: Record<ActionStatus | "Approved" | "Evidence requested", string> = {
+  "Auto-ready": "Ready to approve",
+  "Review suggested": "Review suggested",
+  "Manual evidence needed": "Needs evidence",
+  Approved: "Approved",
+  "Evidence requested": "Evidence requested",
+};
+
 const primaryActionsByLens: Record<LensId, string> = {
   relationships: "action-atlas-priya",
   "mentor-ranking": "action-rank-priya",
@@ -107,12 +115,12 @@ const startupBriefs = {
     stage: "Seed",
     need: "Procurement risk is slowing enterprise pilots.",
     mentor: "Priya Raman",
-    partner: "No partner intro yet",
+    partner: "No partner introduction yet",
   },
   "startup-carbonloop": {
     label: "CarbonLoop",
     stage: "Pre-seed",
-    need: "Grant deadline needs climate finance proof.",
+    need: "Grant deadline needs climate finance evidence.",
     mentor: "Farah Lim",
     partner: "GreenBridge Labs",
   },
@@ -121,7 +129,7 @@ const startupBriefs = {
     stage: "Seed",
     need: "Clinical language needs compliance review.",
     mentor: "Alicia Mensah",
-    partner: "Hold partner intros",
+    partner: "Hold partner introductions",
   },
 } satisfies Record<string, { label: string; stage: string; need: string; mentor: string; partner: string }>;
 
@@ -186,7 +194,7 @@ function summarizeCsvEvidence(filename: string, csvText: string): CsvEvidenceSta
     participantCount: mentors.size + startups.size,
     blockerCount: blockers,
     rows,
-    preview: rows.slice(0, 3).map((row) => `${row.mentor_name} to ${row.startup_name}: ${row.blockers_identified}`),
+    preview: rows.slice(0, 3).map((row) => `${row.mentor_name} with ${row.startup_name}: ${row.blockers_identified}`),
   };
 }
 
@@ -334,7 +342,7 @@ function getDefaultActionForContext(lensId: LensId, startupId: string) {
 function StatusPill({ status }: { status: ActionStatus | "Approved" | "Evidence requested" }) {
   return (
     <span className={cn("inline-flex items-center border px-2 py-1 text-[0.64rem] font-bold uppercase tracking-[0.1em]", statusClasses[status])}>
-      {status}
+      {statusLabels[status]}
     </span>
   );
 }
@@ -452,13 +460,13 @@ function LensBar({
     },
     "mentor-ranking": {
       title: "Mentors",
-      detail: "Who to deploy first",
+      detail: "Who to assign first",
       metric: `${relationshipOsSnapshot.mentorRankings.length} ranked`,
     },
     "partner-intros": {
       title: "Partners",
       detail: "Warm paths worth taking",
-      metric: `${relationshipOsSnapshot.actions.filter((action) => action.lensId === "partner-intros").length} intro`,
+      metric: `${relationshipOsSnapshot.actions.filter((action) => action.lensId === "partner-intros").length} path`,
     },
     evidence: {
       title: "Evidence",
@@ -573,7 +581,7 @@ function ActionQueue({
       : activeDecision === "needs_evidence"
         ? "Evidence requested before approval"
         : activeAction?.status === "Manual evidence needed"
-          ? "Request one more proof point before approval"
+          ? "Request one more piece of evidence before approval"
           : `Approve: ${activeAction?.title ?? "Select the next action"}`;
 
   return (
@@ -647,7 +655,7 @@ function SelectedInsightPanel({
   return (
     <section className="border border-[#17211c] bg-[#fffaf0]">
       <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
-        <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Gemini reasoning</p>
+        <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">AI rationale</p>
         <h2 className="mt-1 text-2xl font-semibold leading-tight">{selectedAction.title}</h2>
       </div>
 
@@ -743,8 +751,8 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
       return {
         contextLabel: "For CarbonLoop",
         eyebrow: "Mentor fit",
-        title: "Deploy Farah for the climate finance sprint",
-        summary: "CarbonLoop needs grant framing and finance proof before the June deadline.",
+        title: "Assign Farah to CarbonLoop's climate finance sprint",
+        summary: "CarbonLoop needs sharper grant framing and stronger finance evidence before the June deadline.",
         status: action.status,
         confidence: action.confidence,
         reasons: ["The blocker is finance-specific.", "Farah matches climate grants and capital readiness.", "GreenBridge can validate the pilot once economics are ready."],
@@ -757,12 +765,12 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
     if (activeLens === "partner-intros") {
       return {
         contextLabel: "For CarbonLoop",
-        eyebrow: "Partner intro",
-        title: "Hold GreenBridge until one proof point is ready",
-        summary: "The partner is a fit, but the intro should wait until warehouse pilot economics are clear.",
+        eyebrow: "Partner introduction",
+        title: "Wait on the GreenBridge introduction until pilot economics are ready",
+        summary: "GreenBridge is relevant, but the introduction should wait until CarbonLoop can show warehouse pilot economics.",
         status: action.status,
         confidence: action.confidence,
-        reasons: ["GreenBridge fits the circular logistics pilot.", "Grant timing makes the intro useful.", "Pilot economics are still missing."],
+        reasons: ["GreenBridge fits the circular logistics pilot.", "Grant timing makes the introduction useful.", "Pilot economics are still missing."],
         primaryLabel: "Request pilot economics",
         primaryDecision: "needs_evidence",
         detailLabel: "Show partner rationale",
@@ -773,11 +781,11 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
       return {
         contextLabel: "For CarbonLoop",
         eyebrow: "Evidence readout",
-        title: "Evidence supports mentor action, not partner approval yet",
-        summary: "The CSV shows urgency and finance need; partner evidence still needs one stronger proof point.",
+        title: "Mentor support is ready; partner approval needs more evidence",
+        summary: "The CSV shows urgency and finance need. The partner path still needs one stronger piece of evidence.",
         status: "Review suggested",
         confidence: 82,
-        reasons: ["CSV sync confirms the grant deadline.", "Blocker text points to finance readiness.", "Partner intro needs warehouse pilot economics."],
+        reasons: ["CSV sync confirms the grant deadline.", "Blocker text points to finance readiness.", "The partner introduction needs warehouse pilot economics."],
         primaryLabel: "Review missing evidence",
         primaryDecision: "needs_evidence",
         detailLabel: "Show evidence",
@@ -787,8 +795,8 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
     return {
       contextLabel: "For CarbonLoop",
       eyebrow: "Recommended next step",
-      title: "Move CarbonLoop into climate finance sprint",
-      summary: "The right move is to pair CarbonLoop with Farah and use GreenBridge only after the pilot proof is ready.",
+      title: "Start CarbonLoop's climate finance sprint",
+      summary: "Pair CarbonLoop with Farah now, and use GreenBridge only after the pilot evidence is ready.",
       status: action.status,
       confidence: action.confidence,
       reasons: ["The company has a near-term grant deadline.", "The blocker is specific enough to act on.", "Farah is the strongest mentor match."],
@@ -803,8 +811,8 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
       return {
         contextLabel: "For Nora Health",
         eyebrow: "Mentor fit",
-        title: "Use Alicia for review, not a broad intro",
-        summary: "Nora needs clinical compliance judgment before the programme sends new hospital introductions.",
+        title: "Ask Alicia to review Nora's clinical language",
+        summary: "Nora needs clinical compliance judgment before the team sends new hospital introductions.",
         status: action.status,
         confidence: action.confidence,
         reasons: ["The blocker is compliance language.", "Alicia is the best clinical product advisor.", "The next move should stay human-reviewed."],
@@ -817,12 +825,12 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
     if (activeLens === "partner-intros") {
       return {
         contextLabel: "For Nora Health",
-        eyebrow: "Partner intro",
-        title: "Do not send hospital intros yet",
+        eyebrow: "Partner introduction",
+        title: "Hold hospital introductions for now",
         summary: "The fit may be strong later, but the current evidence says the language needs review first.",
         status: "Manual evidence needed",
         confidence: 70,
-        reasons: ["Clinical claims sound too absolute.", "Alicia should review the one-pager first.", "A premature intro creates governance risk."],
+        reasons: ["Clinical claims sound too absolute.", "Alicia should review the one-pager first.", "A premature introduction creates governance risk."],
         primaryLabel: "Request review first",
         primaryDecision: "needs_evidence",
         detailLabel: "Show rationale",
@@ -833,7 +841,7 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
       return {
         contextLabel: "For Nora Health",
         eyebrow: "Evidence readout",
-        title: "Evidence supports a review before introductions",
+        title: "Evidence supports advisor review before introductions",
         summary: "The model is not saying Nora lacks fit; it is saying the next action should reduce compliance risk.",
         status: "Review suggested",
         confidence: 76,
@@ -847,8 +855,8 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
     return {
       contextLabel: "For Nora Health",
       eyebrow: "Recommended next step",
-      title: "Review clinical language before intros",
-      summary: "The safest useful action is to have Alicia review Nora's one-pager before any hospital intro goes out.",
+      title: "Review Nora's clinical language before introductions",
+      summary: "The safest useful action is to have Alicia review Nora's one-pager before any hospital introduction goes out.",
       status: action.status,
       confidence: action.confidence,
       reasons: ["Nora has real buyer interest.", "Compliance language is the active blocker.", "Alicia is the correct expert for the risk."],
@@ -862,8 +870,8 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
     return {
       contextLabel: "For Atlas AI",
       eyebrow: "Mentor fit",
-      title: "Deploy Priya first",
-      summary: "Priya is the clearest mentor to activate because the need, fit, and timing all line up.",
+      title: "Assign Priya to Atlas AI first",
+      summary: "Priya is the clearest mentor match because the need, fit, and timing all line up.",
       status: action.status,
       confidence: action.confidence,
       reasons: ["Atlas has a concrete procurement blocker.", "Priya has the strongest enterprise GTM fit.", "Both sides show high confidence."],
@@ -876,13 +884,13 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
   if (activeLens === "partner-intros") {
     return {
       contextLabel: "For Atlas AI",
-      eyebrow: "Partner intro",
-      title: "No partner intro yet",
-      summary: "Atlas needs mentor help on procurement before the programme creates external partner motion.",
+      eyebrow: "Partner introduction",
+      title: "Hold partner introductions for now",
+      summary: "Atlas needs mentor help on procurement before the team creates external partner motion.",
       status: "Manual evidence needed",
       confidence: 67,
-      reasons: ["The active blocker is buyer risk, not partner access.", "Priya should sharpen the security narrative first.", "A partner intro would be premature."],
-      primaryLabel: "Hold partner intro",
+      reasons: ["The active blocker is buyer risk, not partner access.", "Priya should sharpen the security narrative first.", "A partner introduction would be premature."],
+      primaryLabel: "Hold partner introduction",
       primaryDecision: "needs_evidence",
       detailLabel: "Show partner rationale",
     };
@@ -892,8 +900,8 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
     return {
       contextLabel: "For Atlas AI",
       eyebrow: "Evidence readout",
-      title: "Evidence supports a Priya follow-up",
-      summary: "The evidence points to one clear action: help Atlas explain procurement and deployment risk.",
+      title: "Evidence supports a follow-up between Priya and Atlas AI",
+      summary: "The evidence points to one clear action: help Atlas explain procurement, security, and rollout risk.",
       status: action.status,
       confidence: action.confidence,
       reasons: ["WhatsApp/TXT evidence repeats procurement delay.", "CSV confidence scores are high.", "The blocker maps directly to Priya's expertise."],
@@ -906,7 +914,7 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
   return {
     contextLabel: "For Atlas AI",
     eyebrow: "Recommended next step",
-    title: "Create Priya to Atlas follow-up",
+    title: "Schedule a follow-up between Priya and Atlas AI",
     summary: "This is the cleanest next move: the problem is specific, the mentor fit is strong, and the confidence is high.",
     status: action.status,
     confidence: action.confidence,
@@ -1011,7 +1019,7 @@ function RankingsPanel({ rankings }: { rankings: MentorRanking[] }) {
                   </span>
                 </div>
                 <p className="mt-1 text-sm leading-6 text-[#405047]">{ranking.reasoning}</p>
-                <p className="mt-2 text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">Best intro: {startup.name}</p>
+                <p className="mt-2 text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">Best match: {startup.name}</p>
               </div>
               <p className="self-start text-3xl font-semibold text-[#17211c]">{ranking.score}</p>
             </article>
@@ -1187,8 +1195,8 @@ function IngestionPanel({
               ? "Processing evidence into relationship signals..."
               : evidenceProcessed
               ? csvEvidence
-                ? `Run ${processRunCount}: ${csvEvidence.rowCount} ${csvEvidence.rowLabel} processed into relationship, mentor ranking, and partner intro signals.`
-                : `Run ${processRunCount}: Raw information processed into relationship, mentor ranking, and partner intro signals.`
+                ? `Run ${processRunCount}: ${csvEvidence.rowCount} ${csvEvidence.rowLabel} processed into relationship, mentor ranking, and partner introduction signals.`
+                : `Run ${processRunCount}: Raw information processed into relationship, mentor ranking, and partner introduction signals.`
               : csvEvidence
                 ? `${csvEvidence.filename} is ready to process.`
                 : pastedEvidence.trim()
@@ -1220,7 +1228,7 @@ function IngestionPanel({
               <ProcessedCsvStat label={processedCsvSummary.relationshipLabel} value={`${processedCsvSummary.relationshipCount}`} detail={processedCsvSummary.relationshipDetail} />
               <ProcessedCsvStat label="Blockers" value={`${processedCsvSummary.blockerCount}`} detail={`${processedCsvSummary.unresolvedAskCount} unresolved asks`} />
               <ProcessedCsvStat label={processedCsvSummary.topActorLabel} value={processedCsvSummary.topMentorName} detail={`${processedCsvSummary.topMentorScore}% fit score`} />
-              <ProcessedCsvStat label="Partner signals" value={`${processedCsvSummary.partnerSignalCount}`} detail="intro, grant, or pilot cues" />
+              <ProcessedCsvStat label="Partner signals" value={`${processedCsvSummary.partnerSignalCount}`} detail="introduction, grant, or pilot cues" />
               <ProcessedCsvStat label={csvEvidence?.kind === "text" ? "Warmth cues" : "Avg confidence"} value={processedCsvSummary.confidenceValue} detail={processedCsvSummary.confidenceDetail} />
             </div>
           ) : null}
@@ -1232,7 +1240,7 @@ function IngestionPanel({
           onClick={onProcessEvidence}
         >
           <Upload className="h-4 w-4" aria-hidden />
-          {isProcessingEvidence ? "Processing Evidence" : evidenceProcessed ? "Reprocess Raw Information" : "Process Raw Information"}
+          {isProcessingEvidence ? "Processing Raw Information" : evidenceProcessed ? "Reprocess Raw Information" : "Process Raw Information"}
         </button>
       </div>
     </section>
@@ -1441,7 +1449,7 @@ export default function RelationshipOSDemo() {
               Relationship OS for ecosystem operators
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#405047] md:text-base">
-              Pick a company first, then see who to deploy, why they fit, and what proof supports the decision.
+              Pick a company first, then see the recommended mentor, the next action, and the evidence behind it.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 lg:max-w-[360px] lg:justify-end">
