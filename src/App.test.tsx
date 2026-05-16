@@ -28,8 +28,8 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: /review create programme link/i }));
 
     expect(screen.getByText('Selected recommendation')).toBeVisible();
-    expect(screen.getByText('PulseGrid to Health Sandbox')).toBeVisible();
-    expect(screen.getByText(/Programme criteria match/i)).toBeVisible();
+    expect(screen.getAllByText('PulseGrid to Health Sandbox')).toHaveLength(2);
+    expect(screen.getAllByText(/Programme criteria match/i)).toHaveLength(2);
   });
 
   it('lets admins approve links or request missing evidence', async () => {

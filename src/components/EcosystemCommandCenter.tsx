@@ -403,24 +403,27 @@ export function EcosystemCommandCenter() {
                   <p className="ui-sans mt-3 text-xs leading-5 text-[#405047]">{action.rationale}</p>
                   <div className="ui-sans mt-4 grid grid-cols-3 gap-2 text-[0.64rem] font-bold uppercase tracking-[0.08em]">
                     <button
-                      className="border border-[#17211c] bg-[#fffaf0] px-2 py-2 text-[#17211c] hover:bg-[#17211c] hover:text-[#fffaf0] focus-visible:bg-[#17211c] focus-visible:text-[#fffaf0]"
+                      aria-label={`Review ${action.title}`}
+                      className="flex min-h-10 items-center justify-center border border-[#17211c] bg-[#fffaf0] px-2 py-2 text-[#17211c] hover:bg-[#17211c] hover:text-[#fffaf0] focus-visible:bg-[#17211c] focus-visible:text-[#fffaf0]"
                       onClick={() => setSelectedActionId(action.id)}
                     >
-                      Review {action.title}
+                      Review
                     </button>
                     <button
-                      className="border border-[#45624f] bg-[#dce6d8] px-2 py-2 text-[#263b2d] disabled:cursor-not-allowed disabled:opacity-45"
+                      aria-label={`Approve ${action.title}`}
+                      className="flex min-h-10 items-center justify-center border border-[#45624f] bg-[#dce6d8] px-2 py-2 text-[#263b2d] disabled:cursor-not-allowed disabled:opacity-45"
                       disabled={!evidenceProcessed}
                       onClick={() => recordDecision(action.id, 'approved')}
                     >
-                      Approve {action.title}
+                      Approve
                     </button>
                     <button
-                      className="border border-[#934439] bg-[#fffaf0] px-2 py-2 text-[#743025] disabled:cursor-not-allowed disabled:opacity-45"
+                      aria-label={`Request evidence for ${action.title}`}
+                      className="flex min-h-10 items-center justify-center border border-[#934439] bg-[#fffaf0] px-2 py-2 text-[#743025] disabled:cursor-not-allowed disabled:opacity-45"
                       disabled={!evidenceProcessed}
                       onClick={() => recordDecision(action.id, 'evidence-requested')}
                     >
-                      Request evidence for {action.title}
+                      Evidence
                     </button>
                   </div>
                 </article>
