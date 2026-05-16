@@ -18,538 +18,54 @@ import {
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useMemo, useState } from 'react';
+import {
+  mockEcosystemSnapshot,
+  type Action,
+  type ActionDecision,
+  type IconKey,
+  type LensId,
+  type MapActor,
+  type MapLine,
+  type Signal,
+} from '../data/ecosystemData';
 
 type Icon = ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
 
-type Signal = {
-  label: string;
-  detail: string;
-  state: string;
-  icon: Icon;
-};
-
-type Action = {
-  id: string;
-  title: string;
-  actor: string;
-  confidence: string;
-  status: 'Auto-ready' | 'Review suggested' | 'Manual evidence needed';
-  rationale: string;
-  evidence: string[];
-  category?: string;
-  detailHeading?: string;
-  rank?: number;
-  tags?: string[];
-};
-
-type ActionDecision = 'approved' | 'evidence-requested';
-
 type DisplayStatus = Action['status'] | 'Approved' | 'Evidence requested';
 
-type LensId = 'company' | 'service-provider' | 'partner-rankings' | 'mentor-rankings';
+const ecosystemSnapshot = mockEcosystemSnapshot;
+const evidenceSources = ecosystemSnapshot.evidenceSources;
+const externalSignals = ecosystemSnapshot.externalSignals;
+const internalSignals = ecosystemSnapshot.internalSignals;
+const actionsByLens = ecosystemSnapshot.actionsByLens;
+const lensConfigs = Object.fromEntries(ecosystemSnapshot.lenses.map((lens) => [lens.id, lens])) as Record<
+  LensId,
+  (typeof ecosystemSnapshot.lenses)[number]
+>;
+const mapActorsByLens = ecosystemSnapshot.mapActorsByLens;
+const mapLinesByLens = ecosystemSnapshot.mapLinesByLens;
 
-type LensConfig = {
-  id: LensId;
-  label: string;
-  ariaLabel: string;
-  source: string;
-  sourceState: string;
-  profileLabel: string;
-  profileTitle: string;
-  profileText: string;
-  statOne: [string, string];
-  statTwo: [string, string];
-  facts: Array<[string, string]>;
-  mapEyebrow: string;
-  mapTitle: string;
-  mapQuestion: string;
-  mapBadge: string;
-  queueEyebrow: string;
-  queueTitle: string;
-  selectedLabel: string;
-  selectedDefaultId: string;
-  processedSelectionId: string;
-  conclusionTitle: string;
-  conclusionText: string;
+const iconComponents: Record<IconKey, Icon> = {
+  activity: Activity,
+  clock: Clock3,
+  database: Database,
+  'file-text': FileText,
+  globe: Globe2,
+  handshake: Handshake,
+  link: Link2,
+  'message-circle': MessageCircle,
+  'shield-check': ShieldCheck,
 };
 
-type MapActor = {
-  label: string;
-  role: string;
-  x: string;
-  y: string;
-  tone: string;
-};
+const ingestionEvidenceSources = ecosystemSnapshot.ingestionEvidenceSourceIds.map((sourceId) => {
+  const source = evidenceSources.find((candidate) => candidate.id === sourceId);
 
-type MapLine = {
-  x1: string;
-  y1: string;
-  x2: string;
-  y2: string;
-  stroke: string;
-  strokeWidth: string;
-  strokeDasharray?: string;
-};
+  if (!source) {
+    throw new Error(`Missing ingestion evidence source ${sourceId}.`);
+  }
 
-type EvidenceSource = {
-  id: string;
-  label: string;
-  title: string;
-  detail: string;
-  state: string;
-  icon: Icon;
-  primary?: boolean;
-};
-
-const externalSignals: Signal[] = [
-  {
-    label: 'LinkedIn anchor',
-    detail: 'Company page, founder profile, operating keywords, region, seniority.',
-    state: 'Resolved',
-    icon: Link2,
-  },
-  {
-    label: 'Company website',
-    detail: 'Product claim, sector, buyer segment, traction proof, market language.',
-    state: 'Parsed',
-    icon: Globe2,
-  },
-  {
-    label: 'Pitch deck',
-    detail: 'Clinical workflow problem, roadmap, risk claims, funding readiness.',
-    state: 'Scored',
-    icon: FileText,
-  },
-  {
-    label: 'Partner pages',
-    detail: 'Sandbox mandate, target sectors, pilot requirements, country coverage.',
-    state: 'Matched',
-    icon: Handshake,
-  },
-];
-
-const internalSignals: Signal[] = [
-  {
-    label: 'Relationship events',
-    detail: 'Introductions created, accepted, ignored, renewed, escalated, or retired.',
-    state: 'Auto-collected',
-    icon: Activity,
-  },
-  {
-    label: 'Meeting telemetry',
-    detail: 'Calendar sessions, no-shows, follow-up age, cadence gaps, reschedules.',
-    state: 'Joined',
-    icon: Clock3,
-  },
-  {
-    label: 'Admin decisions',
-    detail: 'Approvals, overrides, reviewer notes, governance exceptions, rule reuse.',
-    state: 'Logged',
-    icon: ShieldCheck,
-  },
-  {
-    label: 'Outcome memory',
-    detail: 'Past mentor outcomes, provider success rate, partner conversion signals.',
-    state: 'Learning',
-    icon: Database,
-  },
-];
-
-const evidenceSources: EvidenceSource[] = [
-  {
-    id: 'whatsapp',
-    label: 'Prominent source',
-    title: 'WhatsApp conversation export',
-    detail: 'Mentor chats, founder questions, introductions, follow-ups, blockers, and relationship warmth.',
-    state: 'TXT, ZIP, PDF',
-    icon: MessageCircle,
-    primary: true,
-  },
-  {
-    id: 'csv',
-    label: 'Programme record',
-    title: 'CSV programme data',
-    detail: 'Cohort rows, hours synced, confidence scores, milestones, and blocker history.',
-    state: 'CSV',
-    icon: Database,
-  },
-  {
-    id: 'deck',
-    label: 'Uploaded material',
-    title: 'Decks and notes',
-    detail: 'Pitch decks, meeting notes, programme briefs, and service-provider material.',
-    state: 'PDF, DOC',
-    icon: FileText,
-  },
-  {
-    id: 'links',
-    label: 'Web evidence',
-    title: 'LinkedIn and partner links',
-    detail: 'Actor pages, partner mandates, programme rules, and public capability evidence.',
-    state: 'URL',
-    icon: Link2,
-  },
-];
-
-const relationshipActions: Action[] = [
-  {
-    id: 'provider',
-    title: 'Attach service provider',
-    actor: 'MedReg Studio to PulseGrid',
-    confidence: '91%',
-    status: 'Auto-ready',
-    rationale: 'Regulatory blocker, clinical validation deck, and prior provider outcomes align.',
-    evidence: ['Pitch deck risk section', 'Outcome memory', 'Service provider catalogue'],
-  },
-  {
-    id: 'programme',
-    title: 'Create programme link',
-    actor: 'PulseGrid to Health Sandbox',
-    confidence: '87%',
-    status: 'Review suggested',
-    rationale: 'Programme criteria match, but admin approval is required for cross-border intake.',
-    evidence: ['LinkedIn anchor', 'Programme eligibility rule', 'Admin governance policy'],
-  },
-  {
-    id: 'mentor',
-    title: 'Add mentor support',
-    actor: 'Priya Raman to PulseGrid',
-    confidence: '83%',
-    status: 'Auto-ready',
-    rationale: 'Architecture expertise maps to unresolved integration risk and prior cohort pattern.',
-    evidence: ['Founder profile', 'Meeting telemetry', 'Mentor outcome history'],
-  },
-  {
-    id: 'partner',
-    title: 'Escalate partner pathway',
-    actor: 'Regional Hospital Network',
-    confidence: '69%',
-    status: 'Manual evidence needed',
-    rationale: 'Strong sector fit, but pilot owner is missing from available source evidence.',
-    evidence: ['Partner page', 'Website sector match', 'Missing pilot owner field'],
-  },
-];
-
-const serviceProviderActions: Action[] = [
-  {
-    id: 'provider-pulsegrid',
-    title: 'PulseGrid regulatory sprint',
-    actor: 'MedReg Studio to PulseGrid',
-    confidence: '92%',
-    status: 'Auto-ready',
-    category: 'Company deployment',
-    detailHeading: 'PulseGrid regulatory sprint',
-    rationale: 'PulseGrid has a regulatory sequencing blocker that matches MedReg Studio outcomes in similar health data cases.',
-    evidence: ['Company blocker', 'Provider outcome history', 'Pitch deck risk section'],
-  },
-  {
-    id: 'provider-sandbox',
-    title: 'Health Sandbox office hours',
-    actor: 'MedReg Studio to Health Sandbox',
-    confidence: '84%',
-    status: 'Review suggested',
-    category: 'Programme support',
-    rationale: 'The programme has three health companies with evidence gaps around clinical validation and market-access sequencing.',
-    evidence: ['Programme cohort mix', 'Meeting telemetry', 'Provider capacity window'],
-  },
-  {
-    id: 'provider-readiness',
-    title: 'Readiness clinic package',
-    actor: 'MedReg Studio to admin team',
-    confidence: '78%',
-    status: 'Auto-ready',
-    category: 'Reusable service',
-    rationale: 'Repeated blocker patterns suggest a repeatable provider package instead of one-off introductions.',
-    evidence: ['Outcome memory', 'Admin decision history', 'Common blocker taxonomy'],
-  },
-];
-
-const partnerRankingActions: Action[] = [
-  {
-    id: 'partner-hospital',
-    title: 'Regional Hospital Network',
-    actor: 'Pilot pathway',
-    confidence: '88%',
-    status: 'Review suggested',
-    category: 'Partner',
-    detailHeading: 'Regional Hospital Network',
-    rank: 1,
-    tags: ['Pilot pathway', 'Warm intro', 'Clinical validation'],
-    rationale: 'Best near-term pilot route because the hospital mandate, health data use case, and programme governance all line up.',
-    evidence: ['Partner mandate page', 'Health Sandbox brief', 'Warm intro from programme admin'],
-  },
-  {
-    id: 'partner-ministry',
-    title: 'Health Ministry Sandbox',
-    actor: 'Regulatory pathway',
-    confidence: '82%',
-    status: 'Manual evidence needed',
-    category: 'Partner',
-    rank: 2,
-    tags: ['Regulatory fit', 'Slow access', 'Evidence gap'],
-    rationale: 'Strong regulatory alignment, but the available evidence does not confirm an intake owner or decision cadence.',
-    evidence: ['Policy theme match', 'Missing intake owner', 'Cross-border approval rule'],
-  },
-  {
-    id: 'partner-insurer',
-    title: 'Insurer Innovation Lab',
-    actor: 'Commercial pathway',
-    confidence: '76%',
-    status: 'Review suggested',
-    category: 'Partner',
-    rank: 3,
-    tags: ['Commercial route', 'Buyer signal', 'Mandate watch'],
-    rationale: 'Commercial pathway is plausible, but mandate freshness is weaker than the hospital and regulatory options.',
-    evidence: ['Website sector match', 'Buyer segment overlap', 'Outdated partner page'],
-  },
-  {
-    id: 'partner-university',
-    title: 'University Medical Centre',
-    actor: 'Research pathway',
-    confidence: '71%',
-    status: 'Auto-ready',
-    category: 'Partner',
-    rank: 4,
-    tags: ['Research fit', 'Validation support', 'Lower procurement'],
-    rationale: 'Useful for validation support, but less likely to create a commercial or procurement path in the next cycle.',
-    evidence: ['Research theme match', 'Clinical advisor overlap', 'Low procurement signal'],
-  },
-];
-
-const mentorRankingActions: Action[] = [
-  {
-    id: 'mentor-priya',
-    title: 'Priya Raman',
-    actor: 'Architecture mentor',
-    confidence: '91%',
-    status: 'Auto-ready',
-    category: 'Mentor',
-    detailHeading: 'Priya Raman',
-    rank: 1,
-    tags: ['Architecture mentor', 'Fast cadence', 'Warm relationship'],
-    rationale:
-      'Best mentor fit because her integration architecture track record maps directly to PulseGrid unresolved technical risk and the founder already responds quickly to her guidance.',
-    evidence: ['Meeting telemetry', 'Mentor outcome history', 'WhatsApp follow-up pattern'],
-  },
-  {
-    id: 'mentor-daniel',
-    title: 'Daniel Khoo',
-    actor: 'Commercialisation mentor',
-    confidence: '84%',
-    status: 'Review suggested',
-    category: 'Mentor',
-    detailHeading: 'Daniel Khoo',
-    rank: 2,
-    tags: ['Buyer access', 'Sector fit', 'Cadence watch'],
-    rationale:
-      'Strong secondary mentor for buyer discovery, but the evidence shows slower response cadence than the architecture support path.',
-    evidence: ['Founder profile', 'Buyer segment overlap', 'Follow-up age'],
-  },
-  {
-    id: 'mentor-alicia',
-    title: 'Alicia Mensah',
-    actor: 'Clinical validation mentor',
-    confidence: '80%',
-    status: 'Auto-ready',
-    category: 'Mentor',
-    detailHeading: 'Alicia Mensah',
-    rank: 3,
-    tags: ['Clinical proof', 'Validation support', 'Warm intro'],
-    rationale:
-      'Useful for validation planning after the immediate integration work is moving, especially if the hospital pathway opens.',
-    evidence: ['Clinical workflow evidence', 'Partner pathway match', 'Past mentor outcomes'],
-  },
-  {
-    id: 'mentor-farah',
-    title: 'Farah Lim',
-    actor: 'Fundraising mentor',
-    confidence: '72%',
-    status: 'Manual evidence needed',
-    category: 'Mentor',
-    detailHeading: 'Farah Lim',
-    rank: 4,
-    tags: ['Fundraising help', 'Timing mismatch', 'Evidence gap'],
-    rationale:
-      'Potentially useful later, but the current blocker evidence points to technical and clinical sequencing before fundraising preparation.',
-    evidence: ['Funding readiness score', 'Missing investor brief', 'Programme priority rule'],
-  },
-];
-
-const actionsByLens: Record<LensId, Action[]> = {
-  company: relationshipActions,
-  'service-provider': serviceProviderActions,
-  'partner-rankings': partnerRankingActions,
-  'mentor-rankings': mentorRankingActions,
-};
-
-const lensConfigs: Record<LensId, LensConfig> = {
-  company: {
-    id: 'company',
-    label: 'Company',
-    ariaLabel: 'Company lens',
-    source: 'linkedin.com/company/pulsegrid-health',
-    sourceState: 'Actor resolved',
-    profileLabel: 'Actor profile',
-    profileTitle: 'PulseGrid',
-    profileText:
-      'Health data startup detected from LinkedIn, website copy, deck evidence, and programme activity already inside the platform.',
-    statOne: ['Stage', 'Seed'],
-    statTwo: ['Region', 'SEA'],
-    facts: [
-      ['Detected need', 'Regulatory sequencing and integration ownership'],
-      ['Best next move', 'Bundle mentor, provider, and programme support'],
-      ['Governance flag', 'Cross-border programme approval required'],
-    ],
-    mapEyebrow: 'Ecosystem map',
-    mapTitle: 'Recommended relationship bundle',
-    mapQuestion: 'Who should support this company next?',
-    mapBadge: '3 auto-ready links',
-    queueEyebrow: 'AI action queue',
-    queueTitle: 'Relationships to create',
-    selectedLabel: 'Selected recommendation',
-    selectedDefaultId: 'provider',
-    processedSelectionId: 'programme',
-    conclusionTitle: 'The system recommends a relationship bundle, not a single match.',
-    conclusionText:
-      'PulseGrid should keep technical mentoring, add regulatory service support, enter the Health Sandbox shortlist, and route the partner pathway to admin review because one pilot owner is missing.',
-  },
-  'service-provider': {
-    id: 'service-provider',
-    label: 'Service provider',
-    ariaLabel: 'Service provider lens',
-    source: 'linkedin.com/company/medreg-studio',
-    sourceState: 'Provider resolved',
-    profileLabel: 'Service provider profile',
-    profileTitle: 'MedReg Studio',
-    profileText:
-      'Regulatory and market-access provider matched against company blockers, programme demand, service history, and available capacity.',
-    statOne: ['Role', 'Provider'],
-    statTwo: ['Coverage', 'SEA Health'],
-    facts: [
-      ['Deployment signal', 'Repeated regulatory blockers across health companies'],
-      ['Best next deployment', 'PulseGrid sprint plus Health Sandbox office hours'],
-      ['Governance flag', 'Capacity and conflict checks before programme-wide assignment'],
-    ],
-    mapEyebrow: 'Deployment map',
-    mapTitle: 'Where this provider creates leverage',
-    mapQuestion: 'Which companies or programmes should this provider support next?',
-    mapBadge: '2 priority deployments',
-    queueEyebrow: 'AI deployment queue',
-    queueTitle: 'Provider deployment queue',
-    selectedLabel: 'Selected deployment',
-    selectedDefaultId: 'provider-pulsegrid',
-    processedSelectionId: 'provider-pulsegrid',
-    conclusionTitle: 'The system deploys capability where ecosystem demand is strongest.',
-    conclusionText:
-      'MedReg Studio should support PulseGrid immediately, package the repeated regulatory pattern for Health Sandbox, and keep admin review on capacity before broader rollout.',
-  },
-  'partner-rankings': {
-    id: 'partner-rankings',
-    label: 'Partner rankings',
-    ariaLabel: 'Partner rankings lens',
-    source: 'linkedin.com/company/pulsegrid-health + health-sandbox brief',
-    sourceState: 'Ranking context',
-    profileLabel: 'Ranking context',
-    profileTitle: 'PulseGrid + Health Sandbox',
-    profileText:
-      'Partner ranking starts from the company need and programme mandate, then scores which partners are worth pursuing now.',
-    statOne: ['Priority', 'Pilot'],
-    statTwo: ['Region', 'SEA'],
-    facts: [
-      ['Ranking goal', 'Find the highest-value partner pathway for the next cycle'],
-      ['Best partner type', 'Clinical pilot partner with warm governance access'],
-      ['Governance flag', 'Admin approval required before external introduction'],
-    ],
-    mapEyebrow: 'Partner intelligence',
-    mapTitle: 'Ranked partner opportunities',
-    mapQuestion: 'Which partners are most worth pursuing now?',
-    mapBadge: '4 ranked partners',
-    queueEyebrow: 'AI ranking detail',
-    queueTitle: 'Partner ranking detail',
-    selectedLabel: 'Partner ranking detail',
-    selectedDefaultId: 'partner-hospital',
-    processedSelectionId: 'partner-hospital',
-    conclusionTitle: 'The system ranks partner opportunities by timing, mandate, evidence, and governance risk.',
-    conclusionText:
-      'Regional Hospital Network should be pursued first because it combines a clear pilot pathway, warm programme access, and stronger evidence than the regulatory or commercial alternatives.',
-  },
-  'mentor-rankings': {
-    id: 'mentor-rankings',
-    label: 'Mentor rankings',
-    ariaLabel: 'Mentor rankings lens',
-    source: 'linkedin.com/company/pulsegrid-health + mentor evidence',
-    sourceState: 'Mentor context',
-    profileLabel: 'Ranking context',
-    profileTitle: 'PulseGrid mentorship bench',
-    profileText:
-      'Mentor ranking compares founder need, relationship warmth, response cadence, advice quality, and prior mentor outcomes.',
-    statOne: ['Priority', 'Integration'],
-    statTwo: ['Mentors', '4 ranked'],
-    facts: [
-      ['Ranking goal', 'Find the mentor most likely to move the next blocker'],
-      ['Best mentor type', 'Architecture mentor with fast follow-up cadence'],
-      ['Governance flag', 'Watch mentor load before assigning a second support line'],
-    ],
-    mapEyebrow: 'Mentor intelligence',
-    mapTitle: 'Ranked mentor opportunities',
-    mapQuestion: 'Which mentors should support this founder next?',
-    mapBadge: '4 ranked mentors',
-    queueEyebrow: 'AI mentor detail',
-    queueTitle: 'Mentor ranking detail',
-    selectedLabel: 'Mentor ranking detail',
-    selectedDefaultId: 'mentor-priya',
-    processedSelectionId: 'mentor-priya',
-    conclusionTitle: 'The system ranks mentors by blocker fit, relationship signal, and follow-through risk.',
-    conclusionText:
-      'Priya Raman should be assigned first because the strongest evidence points to architecture risk, fast mentor cadence, and a warm relationship that is already producing follow-up.',
-  },
-};
-
-const companyMapActors: MapActor[] = [
-  { label: 'PulseGrid', role: 'Health data company', x: '48%', y: '44%', tone: 'bg-[#17211c] text-[#fffaf0]' },
-  { label: 'Priya Raman', role: 'Technical mentor', x: '18%', y: '18%', tone: 'bg-[#f7f1e5] text-[#17211c]' },
-  { label: 'MedReg Studio', role: 'Service provider', x: '18%', y: '68%', tone: 'bg-[#e7d4bc] text-[#17211c]' },
-  { label: 'Health Sandbox', role: 'Programme', x: '73%', y: '18%', tone: 'bg-[#dce6d8] text-[#17211c]' },
-  { label: 'Hospital Network', role: 'Partner initiative', x: '76%', y: '67%', tone: 'bg-[#f0dfbf] text-[#17211c]' },
-  { label: 'Programme admin', role: 'Governance owner', x: '49%', y: '86%', tone: 'bg-[#fbf4e7] text-[#17211c]' },
-];
-
-const serviceProviderMapActors: MapActor[] = [
-  { label: 'MedReg Studio', role: 'Service provider', x: '48%', y: '44%', tone: 'bg-[#17211c] text-[#fffaf0]' },
-  { label: 'PulseGrid', role: 'Regulatory sprint', x: '18%', y: '20%', tone: 'bg-[#f7f1e5] text-[#17211c]' },
-  { label: 'Health Sandbox', role: 'Office hours', x: '76%', y: '20%', tone: 'bg-[#dce6d8] text-[#17211c]' },
-  { label: 'Readiness Clinic', role: 'Reusable service', x: '18%', y: '68%', tone: 'bg-[#e7d4bc] text-[#17211c]' },
-  { label: 'Provider Capacity', role: 'Governance check', x: '76%', y: '68%', tone: 'bg-[#f0dfbf] text-[#17211c]' },
-  { label: 'Programme admin', role: 'Approval owner', x: '49%', y: '86%', tone: 'bg-[#fbf4e7] text-[#17211c]' },
-];
-
-const companyMapLines: MapLine[] = [
-  { x1: '48%', y1: '44%', x2: '18%', y2: '18%', stroke: '#45624f', strokeWidth: '2.5' },
-  { x1: '48%', y1: '44%', x2: '18%', y2: '68%', stroke: '#45624f', strokeWidth: '2.5' },
-  { x1: '48%', y1: '44%', x2: '73%', y2: '18%', stroke: '#ad8448', strokeWidth: '2.5', strokeDasharray: '7 5' },
-  { x1: '48%', y1: '44%', x2: '76%', y2: '67%', stroke: '#934439', strokeWidth: '2.5', strokeDasharray: '4 6' },
-  { x1: '49%', y1: '86%', x2: '73%', y2: '18%', stroke: '#9d8f77', strokeWidth: '1.5', strokeDasharray: '3 6' },
-  { x1: '49%', y1: '86%', x2: '76%', y2: '67%', stroke: '#9d8f77', strokeWidth: '1.5', strokeDasharray: '3 6' },
-];
-
-const serviceProviderMapLines: MapLine[] = [
-  { x1: '48%', y1: '44%', x2: '18%', y2: '20%', stroke: '#45624f', strokeWidth: '2.5' },
-  { x1: '48%', y1: '44%', x2: '76%', y2: '20%', stroke: '#45624f', strokeWidth: '2.5' },
-  { x1: '48%', y1: '44%', x2: '18%', y2: '68%', stroke: '#ad8448', strokeWidth: '2.5', strokeDasharray: '7 5' },
-  { x1: '48%', y1: '44%', x2: '76%', y2: '68%', stroke: '#934439', strokeWidth: '2.5', strokeDasharray: '4 6' },
-  { x1: '49%', y1: '86%', x2: '76%', y2: '68%', stroke: '#9d8f77', strokeWidth: '1.5', strokeDasharray: '3 6' },
-  { x1: '49%', y1: '86%', x2: '76%', y2: '20%', stroke: '#9d8f77', strokeWidth: '1.5', strokeDasharray: '3 6' },
-];
-
-const mapActorsByLens: Record<Exclude<LensId, 'partner-rankings' | 'mentor-rankings'>, MapActor[]> = {
-  company: companyMapActors,
-  'service-provider': serviceProviderMapActors,
-};
-
-const mapLinesByLens: Record<Exclude<LensId, 'partner-rankings' | 'mentor-rankings'>, MapLine[]> = {
-  company: companyMapLines,
-  'service-provider': serviceProviderMapLines,
-};
+  return source;
+});
 
 function StatusPill({ status }: { status: DisplayStatus }) {
   const classes = {
@@ -568,7 +84,7 @@ function StatusPill({ status }: { status: DisplayStatus }) {
 }
 
 function SignalRow({ signal }: { signal: Signal }) {
-  const IconComponent = signal.icon;
+  const IconComponent = iconComponents[signal.iconKey];
 
   return (
     <div className="grid grid-cols-[34px_minmax(0,1fr)_auto] gap-3 border-b border-[#cab99d] px-4 py-3 last:border-b-0">
@@ -593,7 +109,7 @@ function EvidenceIngestionPanel({
   queuedEvidenceSource: string | null;
   onQueueEvidence: (sourceId: string) => void;
 }) {
-  const queuedSource = evidenceSources.find((source) => source.id === queuedEvidenceSource);
+  const queuedSource = ingestionEvidenceSources.find((source) => source.id === queuedEvidenceSource);
 
   return (
     <section className="border border-[#17211c] bg-[#fffaf0]">
@@ -607,8 +123,8 @@ function EvidenceIngestionPanel({
       </div>
 
       <div className="grid min-w-0 grid-cols-1 divide-y divide-[#cab99d] lg:grid-cols-4 lg:divide-x lg:divide-y-0">
-        {evidenceSources.map((source) => {
-          const IconComponent = source.icon;
+        {ingestionEvidenceSources.map((source) => {
+          const IconComponent = iconComponents[source.iconKey];
           const isQueued = queuedEvidenceSource === source.id;
           const isPrimary = Boolean(source.primary);
 
@@ -643,7 +159,7 @@ function EvidenceIngestionPanel({
                   onClick={() => onQueueEvidence(source.id)}
                 >
                   <Upload className="h-3.5 w-3.5" aria-hidden />
-                  {isQueued ? 'Queued' : source.id === 'whatsapp' ? 'Queue WhatsApp' : 'Queue source'}
+                  {isQueued ? 'Queued' : source.id === 'whatsapp-export' ? 'Queue WhatsApp' : 'Queue source'}
                 </button>
               </div>
             </article>
@@ -655,7 +171,7 @@ function EvidenceIngestionPanel({
         <div className="grid gap-3 border-t border-[#9d8f77] bg-[#dce6d8] px-4 py-4 md:grid-cols-3">
           <div className="md:col-span-3">
             <p className="ui-sans text-sm font-bold text-[#17211c]">
-              {queuedSource.id === 'whatsapp'
+              {queuedSource.id === 'whatsapp-export'
                 ? 'WhatsApp evidence queued for AI extraction.'
                 : `${queuedSource.title} queued for AI extraction.`}
             </p>
