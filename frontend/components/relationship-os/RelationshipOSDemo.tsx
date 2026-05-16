@@ -40,24 +40,34 @@ type Icon = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 type Decision = "approved" | "needs_evidence";
 
 const SAMPLE_WHATSAPP_CSV_PATH = "/demo/relationship-os-whatsapp-sync.csv";
+const LIVE_EVIDENCE_SOURCE_IDS = ["whatsapp-export", "csv-may-sync"];
 
 type CsvEvidenceState = {
+  kind: "csv" | "text";
   filename: string;
+  sourceLabel: string;
+  rowLabel: string;
   rowCount: number;
   mentorCount: number;
   startupCount: number;
+  participantCount: number;
   blockerCount: number;
   rows: Record<string, string>[];
   preview: string[];
 };
 
 type ProcessedCsvSummary = {
+  rowLabel: string;
   rowCount: number;
+  relationshipLabel: string;
+  relationshipDetail: string;
   relationshipCount: number;
   blockerCount: number;
   unresolvedAskCount: number;
   partnerSignalCount: number;
-  averageConfidence: number;
+  confidenceValue: string;
+  confidenceDetail: string;
+  topActorLabel: string;
   topMentorName: string;
   topMentorScore: number;
 };
@@ -160,18 +170,82 @@ function summarizeCsvEvidence(filename: string, csvText: string): CsvEvidenceSta
   const blockers = rows.filter((row) => row.blockers_identified?.trim()).length;
 
   return {
+    kind: "csv",
     filename,
+    sourceLabel: "CSV",
+    rowLabel: "CSV rows",
     rowCount: rows.length,
     mentorCount: mentors.size,
     startupCount: startups.size,
+    participantCount: mentors.size + startups.size,
     blockerCount: blockers,
     rows,
     preview: rows.slice(0, 3).map((row) => `${row.mentor_name} to ${row.startup_name}: ${row.blockers_identified}`),
   };
 }
 
+function normalizeParticipantId(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+function summarizeTextEvidence(filename: string, text: string): CsvEvidenceState {
+  const lines = text
+    .split(/\r?\n|\s\|\s/g)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const rows = lines.map((line, index) => {
+    const whatsappMatch = line.match(/^\[?[0-9/.,:\sAPMapm-]+\]?\s*([^:]{2,60}):\s*(.+)$/);
+    const simpleSpeakerMatch = line.match(/^([^:]{2,60}):\s*(.+)$/);
+    const speaker = (whatsappMatch?.[1] ?? simpleSpeakerMatch?.[1] ?? `Evidence line ${index + 1}`).trim();
+    const message = (whatsappMatch?.[2] ?? simpleSpeakerMatch?.[2] ?? line).trim();
+    const lowerMessage = message.toLowerCase();
+
+    return {
+      mentor_id: `participant-${normalizeParticipantId(speaker) || index}`,
+      startup_id: "uploaded-text-evidence",
+      mentor_name: speaker,
+      startup_name: "Uploaded evidence",
+      hours_synced: "0",
+      milestones_completed: /(done|completed|drafted|sent|shared|finished|mapped|reviewed)/i.test(message) ? message : "",
+      blockers_identified: /(blocker|blocked|stuck|delay|risk|issue|concern|cannot|can't|waiting|unsure|not ready)/i.test(message)
+        ? message
+        : "",
+      founder_confidence_score: "",
+      mentor_confidence_score: "",
+      whatsapp_chat_excerpt: message,
+      follow_ups: /(follow up|next step|send|share|intro|introduce|circle back|schedule|book|review)/i.test(message) ? message : "",
+      unresolved_asks: /\?|can you|could you|please|waiting for|need you to/i.test(message) ? message : "",
+      sentiment_warmth: /(thanks|thank you|great|helpful|excited|appreciate|good progress)/i.test(message)
+        ? "high"
+        : /(ok|agree|promising|close|clear)/i.test(lowerMessage)
+          ? "medium"
+          : "neutral",
+      mentor_responsiveness: "uploaded text",
+    };
+  });
+  const participants = new Set(rows.map((row) => row.mentor_name).filter(Boolean));
+
+  return {
+    kind: "text",
+    filename,
+    sourceLabel: "WhatsApp/TXT",
+    rowLabel: "messages",
+    rowCount: rows.length,
+    mentorCount: participants.size,
+    startupCount: 0,
+    participantCount: participants.size,
+    blockerCount: rows.filter((row) => row.blockers_identified).length,
+    rows,
+    preview: rows.slice(0, 3).map((row) => `${row.mentor_name}: ${row.whatsapp_chat_excerpt}`),
+  };
+}
+
 function processCsvEvidenceRows(csv: CsvEvidenceState): ProcessedCsvSummary {
   const relationshipPairs = new Set(csv.rows.filter((row) => row.mentor_id && row.startup_id).map((row) => `${row.mentor_id}:${row.startup_id}`));
+  const participants = new Set(csv.rows.map((row) => row.mentor_name).filter(Boolean));
   const confidenceScores = csv.rows
     .flatMap((row) => [Number(row.founder_confidence_score), Number(row.mentor_confidence_score)])
     .filter((score) => Number.isFinite(score));
@@ -206,17 +280,24 @@ function processCsvEvidenceRows(csv: CsvEvidenceState): ProcessedCsvSummary {
       score: Math.min(100, Math.round(mentor.total / Math.max(mentor.count, 1))),
     }))
     .sort((first, second) => second.score - first.score)[0];
+  const warmMessages = csv.rows.filter((row) => row.sentiment_warmth === "high" || row.sentiment_warmth === "medium").length;
+  const averageConfidence = confidenceScores.length
+    ? Math.round((confidenceScores.reduce((sum, score) => sum + score, 0) / confidenceScores.length) * 10) / 10
+    : 0;
 
   return {
+    rowLabel: csv.rowLabel,
     rowCount: csv.rowCount,
-    relationshipCount: relationshipPairs.size,
+    relationshipLabel: csv.kind === "text" ? "Participants" : "Relationships",
+    relationshipDetail: csv.kind === "text" ? "speakers parsed" : "mentor-startup pairs",
+    relationshipCount: csv.kind === "text" ? participants.size : relationshipPairs.size,
     blockerCount: csv.blockerCount,
     unresolvedAskCount: csv.rows.filter((row) => row.unresolved_asks?.trim()).length,
     partnerSignalCount: csv.rows.filter((row) => /partner|intro|grant|pilot|greenbridge/i.test(`${row.follow_ups} ${row.unresolved_asks} ${row.blockers_identified}`)).length,
-    averageConfidence: confidenceScores.length
-      ? Math.round((confidenceScores.reduce((sum, score) => sum + score, 0) / confidenceScores.length) * 10) / 10
-      : 0,
-    topMentorName: rankedMentor?.name ?? "No mentor rows",
+    confidenceValue: csv.kind === "text" ? `${warmMessages}` : `${averageConfidence}/10`,
+    confidenceDetail: csv.kind === "text" ? "warmth cues found" : "founder and mentor scores",
+    topActorLabel: csv.kind === "text" ? "Most active" : "Top mentor",
+    topMentorName: rankedMentor?.name ?? "No participants",
     topMentorScore: rankedMentor?.score ?? 0,
   };
 }
@@ -668,14 +749,14 @@ function IngestionPanel({
     <section className="border border-[#17211c] bg-[#fffaf0]">
       <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
         <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Data setup</p>
-        <h2 className="mt-1 text-2xl font-semibold leading-tight">Add relationship evidence</h2>
+        <h2 className="mt-1 text-2xl font-semibold leading-tight">Process supported evidence</h2>
         <p className="mt-2 max-w-[76ch] text-sm leading-6 text-[#405047]">
-          WhatsApp, CSV, decks, and partner notes all resolve into the same relationship graph so the demo data stays consistent across every section.
+          This demo processes CSV mentor syncs and WhatsApp/TXT exports. PDFs, decks, Google Sheets, Airtable, and Firestore stay out of the live demo until the backend credentials and extractors are connected.
         </p>
       </div>
 
-      <div className="grid gap-3 p-3 lg:grid-cols-5">
-        {relationshipOsSnapshot.ingestionEvidenceSourceIds.map((sourceId) => {
+      <div className="grid gap-3 p-3 md:grid-cols-2">
+        {LIVE_EVIDENCE_SOURCE_IDS.map((sourceId) => {
           const source = relationshipOsSnapshot.evidenceSources.find((candidate) => candidate.id === sourceId);
 
           if (!source) return null;
@@ -692,8 +773,8 @@ function IngestionPanel({
         <div className="min-w-0">
           <p className="text-sm font-bold text-[#17211c]">
             {csvEvidence
-              ? `${csvEvidence.filename} loaded: ${csvEvidence.rowCount} CSV evidence rows across ${csvEvidence.mentorCount} mentors and ${csvEvidence.startupCount} startups.`
-              : "Upload a CSV from your laptop, or load the sample WhatsApp CSV for the demo."}
+              ? `${csvEvidence.filename} loaded: ${csvEvidence.rowCount} ${csvEvidence.rowLabel} across ${csvEvidence.participantCount} participants.`
+              : "Upload CSV or WhatsApp/TXT evidence from your laptop, or load the sample CSV for the demo."}
           </p>
           {csvEvidence ? (
             <div className="mt-3 grid gap-2">
@@ -713,12 +794,12 @@ function IngestionPanel({
         </div>
         <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 border border-[#17211c] bg-[#17211c] px-5 py-2 text-sm font-bold text-[#fffaf0] hover:bg-[#263b2d]">
           <Upload className="h-4 w-4" aria-hidden />
-          Upload CSV
+          Upload Evidence
           <input
             className="sr-only"
             type="file"
-            accept=".csv,text/csv"
-            aria-label="Upload CSV evidence"
+            accept=".csv,.txt,text/csv,text/plain"
+            aria-label="Upload CSV or WhatsApp text evidence"
             onChange={(event) => {
               const file = event.currentTarget.files?.[0];
 
@@ -747,7 +828,7 @@ function IngestionPanel({
               ? "Processing the CSV rows into relationship evidence..."
               : evidenceProcessed
               ? csvEvidence
-                ? `Run ${processRunCount}: ${csvEvidence.rowCount} CSV evidence rows processed into relationship, mentor ranking, and partner intro signals.`
+                ? `Run ${processRunCount}: ${csvEvidence.rowCount} ${csvEvidence.rowLabel} processed into relationship, mentor ranking, and partner intro signals.`
                 : `Run ${processRunCount}: Raw information processed into relationship, mentor ranking, and partner intro signals.`
               : csvEvidence
                 ? `${csvEvidence.filename} is ready to process.`
@@ -770,12 +851,12 @@ function IngestionPanel({
           ) : null}
           {processedCsvSummary ? (
             <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              <ProcessedCsvStat label="CSV rows" value={`${processedCsvSummary.rowCount}`} detail="parsed from file" />
-              <ProcessedCsvStat label="Relationships" value={`${processedCsvSummary.relationshipCount}`} detail="mentor-startup pairs" />
+              <ProcessedCsvStat label={processedCsvSummary.rowLabel} value={`${processedCsvSummary.rowCount}`} detail="parsed from file" />
+              <ProcessedCsvStat label={processedCsvSummary.relationshipLabel} value={`${processedCsvSummary.relationshipCount}`} detail={processedCsvSummary.relationshipDetail} />
               <ProcessedCsvStat label="Blockers" value={`${processedCsvSummary.blockerCount}`} detail={`${processedCsvSummary.unresolvedAskCount} unresolved asks`} />
-              <ProcessedCsvStat label="Top mentor" value={processedCsvSummary.topMentorName} detail={`${processedCsvSummary.topMentorScore}% CSV fit score`} />
+              <ProcessedCsvStat label={processedCsvSummary.topActorLabel} value={processedCsvSummary.topMentorName} detail={`${processedCsvSummary.topMentorScore}% fit score`} />
               <ProcessedCsvStat label="Partner signals" value={`${processedCsvSummary.partnerSignalCount}`} detail="intro, grant, or pilot cues" />
-              <ProcessedCsvStat label="Avg confidence" value={`${processedCsvSummary.averageConfidence}/10`} detail="founder and mentor scores" />
+              <ProcessedCsvStat label={csvEvidence?.kind === "text" ? "Warmth cues" : "Avg confidence"} value={processedCsvSummary.confidenceValue} detail={processedCsvSummary.confidenceDetail} />
             </div>
           ) : null}
         </div>
@@ -864,12 +945,15 @@ export default function RelationshipOSDemo() {
     setProcessingError(null);
 
     try {
-      if (!file.name.toLowerCase().endsWith(".csv") && file.type !== "text/csv") {
-        throw new Error("Upload a CSV file with the expected mentor/startup evidence columns.");
+      const isCsv = file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv";
+      const isText = file.name.toLowerCase().endsWith(".txt") || file.type === "text/plain";
+
+      if (!isCsv && !isText) {
+        throw new Error("Upload CSV mentor syncs or WhatsApp/TXT exports for this demo.");
       }
 
-      const csvText = await file.text();
-      const csvState = summarizeCsvEvidence(file.name, csvText);
+      const fileText = await file.text();
+      const csvState = isCsv ? summarizeCsvEvidence(file.name, fileText) : summarizeTextEvidence(file.name, fileText);
 
       if (csvState.rowCount === 0) {
         throw new Error("That CSV did not contain any data rows.");

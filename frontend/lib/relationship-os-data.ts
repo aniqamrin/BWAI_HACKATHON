@@ -299,16 +299,16 @@ export const relationshipOsSnapshot: EcosystemSnapshot = {
     },
     {
       id: "signal-carbonloop-deadline",
-      sourceId: "partner-notes",
-      label: "CarbonLoop grant deadline is near",
-      detail: "Partner evidence and climate finance mentor capacity line up for a time-sensitive intro.",
+      sourceId: "csv-may-sync",
+      label: "CarbonLoop grant deadline appears in the sync CSV",
+      detail: "The uploaded row contains grant urgency, proof-point gaps, and follow-up language for the finance sprint.",
       state: "Linked",
     },
     {
       id: "signal-nora-compliance",
-      sourceId: "deck-nora",
-      label: "Nora needs safer clinical language",
-      detail: "The deck shows interest from clinical champions but weak compliance phrasing.",
+      sourceId: "whatsapp-export",
+      label: "Nora WhatsApp/TXT evidence flags clinical language risk",
+      detail: "The chat-style evidence says the hospital intro should wait until absolute claims are softened.",
       state: "Flagged",
     },
     {
