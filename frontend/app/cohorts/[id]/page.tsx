@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Users, Zap, CheckCircle, AlertTriangle, Brain, ArrowRight, GitBranch } from "lucide-react";
+import { Users, Zap, CheckCircle, Brain, ArrowRight, GitBranch, Pencil, X, Search, Save } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { cohortsApi } from "@/lib/api";
+import { cohortsApi, startupsApi, mentorsApi } from "@/lib/api";
 import { toast } from "@/components/ui/toaster";
 
 const scoreColor = (score: number) => {
@@ -33,13 +33,66 @@ export default function CohortDetailPage() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [availableStartups, setAvailableStartups] = useState<any[]>([]);
+  const [availableMentors, setAvailableMentors] = useState<any[]>([]);
+  const [selectedStartupIds, setSelectedStartupIds] = useState<Set<string>>(new Set());
+  const [selectedMentorIds, setSelectedMentorIds] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
 
-  useEffect(() => {
+  const refreshCohort = () =>
     cohortsApi.getById(id).then((res: any) => {
       setCohort(res.data);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [id]);
+
+  useEffect(() => { refreshCohort(); }, [id]);
+
+  const openEditor = async () => {
+    setLoadingMembers(true);
+    setEditing(true);
+    setSearch("");
+    try {
+      const [sRes, mRes] = await Promise.all([
+        startupsApi.getAll({ limit: "50" }) as any,
+        mentorsApi.getAll({ limit: "50" }) as any,
+      ]);
+      setAvailableStartups(sRes?.data?.startups || []);
+      setAvailableMentors(mRes?.data?.mentors || []);
+      setSelectedStartupIds(new Set(cohort?.startup_ids || []));
+      setSelectedMentorIds(new Set(cohort?.mentor_ids || []));
+    } catch {
+      toast({ title: "Failed to load available members", variant: "error" });
+      setEditing(false);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  const saveMembers = async () => {
+    setSaving(true);
+    try {
+      await cohortsApi.updateMembers(id, {
+        startup_ids: Array.from(selectedStartupIds),
+        mentor_ids: Array.from(selectedMentorIds),
+      });
+      toast({ title: "Members updated", variant: "success" });
+      setEditing(false);
+      await refreshCohort();
+    } catch {
+      toast({ title: "Failed to save members", variant: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggle = (set: Set<string>, id: string): Set<string> => {
+    const next = new Set(set);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  };
 
   const handleRunMatching = async () => {
     setRunning(true);
@@ -100,43 +153,167 @@ export default function CohortDetailPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-6">
-        {/* Left: Member lists */}
+        {/* Left: Member lists / editor */}
         <div className="space-y-4">
-          <Card glass>
-            <CardHeader><CardTitle className="text-xs">Startups ({startups.length})</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              {startups.map((s: any) => (
-                <div key={s.id} className="flex items-center gap-2 py-1.5 border-b border-white/5 last:border-0">
-                  <div className="w-6 h-6 rounded bg-violet-500/20 flex items-center justify-center text-[10px] font-bold text-violet-400">
-                    {s.name?.charAt(0) || s.startup_name?.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium">{s.name || s.startup_name}</p>
-                    <p className="text-[10px] text-muted-foreground">{s.industry} · {s.stage}</p>
-                  </div>
+          {editing ? (
+            <Card glass>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs">Edit Members</CardTitle>
+                  <button onClick={() => setEditing(false)} className="text-muted-foreground hover:text-foreground">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-              ))}
-              {startups.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No startups added</p>}
-            </CardContent>
-          </Card>
+                <div className="relative mt-2">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Filter…"
+                    className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-white/10 bg-white/5 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto">
+                {loadingMembers ? (
+                  <div className="space-y-2">
+                    {[...Array(5)].map((_, i) => <div key={i} className="h-8 rounded shimmer" />)}
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <p className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider mb-2">
+                        Startups ({selectedStartupIds.size} selected)
+                      </p>
+                      <div className="space-y-1">
+                        {availableStartups
+                          .filter((s) => !search || (s.startup_name || "").toLowerCase().includes(search.toLowerCase()) || (s.industry || "").toLowerCase().includes(search.toLowerCase()))
+                          .map((s: any) => {
+                            const checked = selectedStartupIds.has(s.id);
+                            return (
+                              <label key={s.id} className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-colors ${checked ? "bg-violet-500/10 border border-violet-500/20" : "hover:bg-white/5"}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => setSelectedStartupIds(toggle(selectedStartupIds, s.id))}
+                                  className="accent-violet-500 w-3 h-3 flex-shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium truncate">{s.startup_name}</p>
+                                  <p className="text-[10px] text-muted-foreground">{s.industry} · {s.stage}</p>
+                                </div>
+                              </label>
+                            );
+                          })}
+                      </div>
+                    </div>
 
-          <Card glass>
-            <CardHeader><CardTitle className="text-xs">Mentors ({mentors.length})</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              {mentors.map((m: any) => (
-                <div key={m.id} className="flex items-center gap-2 py-1.5 border-b border-white/5 last:border-0">
-                  <div className="w-6 h-6 rounded bg-green-500/20 flex items-center justify-center text-[10px] font-bold text-green-400">
-                    {m.name?.charAt(0) || m.full_name?.charAt(0)}
+                    <div>
+                      <p className="text-[10px] font-semibold text-green-400 uppercase tracking-wider mb-2">
+                        Mentors ({selectedMentorIds.size} selected)
+                      </p>
+                      <div className="space-y-1">
+                        {availableMentors
+                          .filter((m) => !search || (m.full_name || "").toLowerCase().includes(search.toLowerCase()) || (m.expertise || []).join(" ").toLowerCase().includes(search.toLowerCase()))
+                          .map((m: any) => {
+                            const checked = selectedMentorIds.has(m.id);
+                            return (
+                              <label key={m.id} className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition-colors ${checked ? "bg-green-500/10 border border-green-500/20" : "hover:bg-white/5"}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => setSelectedMentorIds(toggle(selectedMentorIds, m.id))}
+                                  className="accent-green-500 w-3 h-3 flex-shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium truncate">{m.full_name}</p>
+                                  <p className="text-[10px] text-muted-foreground truncate">{(m.expertise || []).slice(0, 2).join(", ")}</p>
+                                </div>
+                              </label>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+              <div className="px-4 pb-4 flex gap-2">
+                <Button size="sm" onClick={saveMembers} disabled={saving || loadingMembers} className="flex-1 gap-1.5 h-7 text-xs">
+                  {saving ? <div className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-3 h-3" />}
+                  Save Members
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditing(false)} className="h-7 text-xs">
+                  Cancel
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <>
+              <Card glass>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xs">Startups ({startups.length})</CardTitle>
+                    {cohort.status !== "active" && cohort.status !== "completed" && (
+                      <button onClick={openEditor} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors">
+                        <Pencil className="w-2.5 h-2.5" /> Edit
+                      </button>
+                    )}
                   </div>
-                  <div>
-                    <p className="text-xs font-medium">{m.name || m.full_name}</p>
-                    <p className="text-[10px] text-muted-foreground">{(m.expertise || []).slice(0, 2).join(", ")}</p>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {startups.map((s: any) => (
+                    <div key={s.id} className="flex items-center gap-2 py-1.5 border-b border-white/5 last:border-0">
+                      <div className="w-6 h-6 rounded bg-violet-500/20 flex items-center justify-center text-[10px] font-bold text-violet-400">
+                        {s.startup_name?.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium">{s.startup_name}</p>
+                        <p className="text-[10px] text-muted-foreground">{s.industry} · {s.stage}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {startups.length === 0 && (
+                    <div className="text-center py-4">
+                      <p className="text-xs text-muted-foreground mb-2">No startups added yet</p>
+                      <button onClick={openEditor} className="text-xs text-primary hover:underline">+ Add startups</button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card glass>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xs">Mentors ({mentors.length})</CardTitle>
+                    {cohort.status !== "active" && cohort.status !== "completed" && (
+                      <button onClick={openEditor} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors">
+                        <Pencil className="w-2.5 h-2.5" /> Edit
+                      </button>
+                    )}
                   </div>
-                </div>
-              ))}
-              {mentors.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No mentors added</p>}
-            </CardContent>
-          </Card>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {mentors.map((m: any) => (
+                    <div key={m.id} className="flex items-center gap-2 py-1.5 border-b border-white/5 last:border-0">
+                      <div className="w-6 h-6 rounded bg-green-500/20 flex items-center justify-center text-[10px] font-bold text-green-400">
+                        {m.full_name?.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium">{m.full_name}</p>
+                        <p className="text-[10px] text-muted-foreground">{(m.expertise || []).slice(0, 2).join(", ")}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {mentors.length === 0 && (
+                    <div className="text-center py-4">
+                      <p className="text-xs text-muted-foreground mb-2">No mentors added yet</p>
+                      <button onClick={openEditor} className="text-xs text-primary hover:underline">+ Add mentors</button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
 
         {/* Center: Compatibility matrix */}

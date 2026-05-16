@@ -95,7 +95,7 @@ export default function AgentPage() {
         <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <PageHeader
             title="AI Agent"
-            subtitle="Powered by Vertex AI Agent Builder — ask anything about your ecosystem"
+            description="Powered by Gemini — ask anything about your ecosystem"
             icon={Bot}
           />
           {!empty && (
@@ -268,26 +268,61 @@ export default function AgentPage() {
   );
 }
 
-// Renders plain text, bolding **text** patterns and line breaks
+// Renders markdown-lite: **bold**, `code`, bullet lists, numbered lists, blank lines
 function MessageContent({ text }: { text: string }) {
   const lines = text.split("\n");
   return (
     <div className="space-y-1">
       {lines.map((line, i) => {
-        if (!line) return <br key={i} />;
-        const parts = line.split(/(\*\*[^*]+\*\*)/g);
-        return (
-          <p key={i}>
-            {parts.map((part, j) =>
-              part.startsWith("**") && part.endsWith("**") ? (
-                <strong key={j}>{part.slice(2, -2)}</strong>
-              ) : (
-                part
-              )
-            )}
-          </p>
-        );
+        if (!line.trim()) return <div key={i} className="h-1" />;
+
+        const isBullet = /^[-•*]\s/.test(line.trim());
+        const isNumbered = /^\d+\.\s/.test(line.trim());
+        const content = isBullet
+          ? line.trim().replace(/^[-•*]\s/, "")
+          : isNumbered
+          ? line.trim().replace(/^\d+\.\s/, "")
+          : line;
+
+        const rendered = renderInline(content);
+
+        if (isBullet) {
+          return (
+            <div key={i} className="flex items-start gap-1.5">
+              <span className="text-primary mt-1 flex-shrink-0 text-xs">•</span>
+              <span>{rendered}</span>
+            </div>
+          );
+        }
+        if (isNumbered) {
+          const num = line.trim().match(/^(\d+)\./)?.[1];
+          return (
+            <div key={i} className="flex items-start gap-2">
+              <span className="text-muted-foreground flex-shrink-0 text-xs tabular-nums min-w-[16px]">{num}.</span>
+              <span>{rendered}</span>
+            </div>
+          );
+        }
+        return <p key={i}>{rendered}</p>;
       })}
     </div>
   );
+}
+
+function renderInline(text: string): React.ReactNode[] {
+  // Split on **bold** and `code` patterns
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return parts.map((part, j) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={j} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={j} className="px-1 py-0.5 rounded text-[11px] bg-white/10 text-violet-300 font-mono">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return part;
+  });
 }

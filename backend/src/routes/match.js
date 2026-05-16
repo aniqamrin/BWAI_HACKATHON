@@ -2,7 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const { authenticate } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validate');
-const { matchMentorsForStartup, matchProgrammesForStartup } = require('../services/matchingService');
+const { matchMentorsForStartup, matchProgrammesForStartup, matchInvestorsForStartup } = require('../services/matchingService');
 const { success, error, notFound } = require('../utils/response');
 const { query } = require('../db/connection');
 const logger = require('../utils/logger');
@@ -47,6 +47,27 @@ router.post('/programme', authenticate, [
   } catch (err) {
     logger.error('Programme match error:', err);
     return error(res, 'Programme matching failed: ' + err.message);
+  }
+});
+
+// POST /api/match/investor
+router.post('/investor', authenticate, [
+  body('startup_id').notEmpty().withMessage('Startup ID is required'),
+  validate
+], async (req, res) => {
+  try {
+    const { startup_id, limit = 5 } = req.body;
+
+    const startupCheck = await query('SELECT id FROM startups WHERE id = $1', [startup_id]);
+    if (!startupCheck.rows[0]) return notFound(res, 'Startup not found');
+
+    const matches = await matchInvestorsForStartup(startup_id, limit);
+
+    logger.info(`Generated ${matches.length} investor matches for startup ${startup_id}`);
+    return success(res, { matches, total: matches.length }, 'Investor matches generated');
+  } catch (err) {
+    logger.error('Investor match error:', err);
+    return error(res, 'Investor matching failed: ' + err.message);
   }
 });
 

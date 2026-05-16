@@ -204,6 +204,7 @@ function mockHandler(endpoint: string, options: ApiOptions = {}): unknown {
   if (endpoint === "/api/lifecycle/summary") return ok(MOCK_LIFECYCLE_SUMMARY);
   if (endpoint === "/api/lifecycle/status") return ok({ enabled: true, running: false, last_run: new Date(Date.now() - 3600000).toISOString(), last_stats: { nudges: 2, escalations: 1, health_checks: 5 }, next_run: "Every 6 hours" });
   if (endpoint === "/api/lifecycle/run" && method === "POST") return ok({ nudges: 2, escalations: 0, auto_completed: 1, health_checks: 8, errors: 0 }, "Lifecycle scan completed");
+  if (endpoint === "/api/lifecycle/signals") return ok({ signals: [], total: 0, at_risk_count: 0, avg_composite_index: 0 });
 
   // Relationships extended
   if (endpoint.endsWith("/timeline") && method === "GET") return ok({ timeline: MOCK_LIFECYCLE_EVENTS });
@@ -335,7 +336,9 @@ async function apiRequest<T>(endpoint: string, options: ApiOptions = {}): Promis
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || data.message || "API request failed");
+      const err = new Error(data.error || data.message || "API request failed") as any;
+      err.data = data.data;
+      throw err;
     }
 
     return data;
@@ -411,6 +414,8 @@ export const matchApi = {
     apiRequest("/api/match/mentor", { method: "POST", body: { startup_id, limit } }),
   matchProgrammes: (startup_id: string, limit?: number) =>
     apiRequest("/api/match/programme", { method: "POST", body: { startup_id, limit } }),
+  matchInvestors: (startup_id: string, limit?: number) =>
+    apiRequest("/api/match/investor", { method: "POST", body: { startup_id, limit } }),
   getRecommendations: (startup_id: string) =>
     apiRequest(`/api/match/recommendations/${startup_id}`),
 };
@@ -493,6 +498,7 @@ export const lifecycleApi = {
   getSummary: () => apiRequest("/api/lifecycle/summary"),
   getStatus: () => apiRequest("/api/lifecycle/status"),
   run: () => apiRequest("/api/lifecycle/run", { method: "POST" }),
+  getSignals: () => apiRequest("/api/lifecycle/signals"),
 };
 
 export default apiRequest;

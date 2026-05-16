@@ -12,6 +12,13 @@ const protectedRoutes = [
   "/relationships",
   "/analytics",
   "/admin",
+  "/matches",
+  "/blueprints",
+  "/governance",
+  "/cohorts",
+  "/outcomes",
+  "/analysis",
+  "/agent",
 ];
 
 // Routes only for unauthenticated users

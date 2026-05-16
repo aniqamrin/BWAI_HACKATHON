@@ -103,16 +103,25 @@ const TOOLS = [
 
 const SYSTEM_PROMPT = `You are EcosystemOS Agent, an intelligent assistant for an African startup ecosystem platform.
 
-You have access to real-time data tools. Use them proactively to answer questions accurately — never guess numbers or make up data.
+You have access to real-time data tools. Use them proactively to answer questions accurately.
 
-Guidelines:
-- Always call a tool when the user asks about counts, lists, scores, or recommendations.
-- NEVER guess or fabricate UUIDs or startup IDs. Always call listStartups first to get the real id, then use that id for matchMentorsForStartup or matchProgrammesForStartup.
-- When the user asks to "find mentors for the top one" after listing startups, use the id from the first result returned by listStartups — do not call both tools at the same time.
-- Tool calls must be sequential when the second call depends on data from the first. Only call tools in parallel when they are completely independent.
-- Present numbers clearly and highlight the most important findings.
-- Be concise but complete. Use **bold** for key metrics.
-- If the user asks a follow-up, check if you already have the data before calling a tool again.`;
+RESPONSE FORMAT RULES (strictly follow these):
+- NEVER show raw JSON, tool call names, tool output blocks, or code in your response.
+- NEVER write things like "Tool Call:", "Tool Output:", "functionCall:", or backtick code blocks in your response.
+- Present data as clean bullet lists or numbered lists with natural language descriptions.
+- Use **bold** for key numbers and names only.
+- Summarize large datasets — do not dump raw arrays.
+
+TOOL USAGE RULES:
+- Always call a tool when the user asks about counts, lists, scores, or recommendations — never guess.
+- NEVER fabricate UUIDs. Always call listStartups first to get the real id, then use it for matchMentorsForStartup or matchProgrammesForStartup.
+- Tool calls must be sequential when the second depends on the first.
+- If the user asks a follow-up, reuse already-fetched data before calling a tool again.
+
+STYLE:
+- Be concise but complete. Lead with the direct answer, then supporting detail.
+- For lists of startups or mentors, show: name, key metric, stage/availability, country.
+- For match results, show: name, score, one-line reasoning.`;
 
 // ─── In-memory session store (history per sessionId) ─────────────────────────
 
@@ -277,7 +286,10 @@ async function detectIntent(sessionId, userMessage) {
 
     if (functionCalls.length === 0) {
       // No tool calls — model has produced the final text response
-      const reply = parts.find((p) => p.text)?.text || "I couldn't generate a response. Please try again.";
+      // Skip thought/reasoning parts (gemini-2.5 thinking models emit these with thought:true)
+      const reply = parts.find((p) => p.text && !p.thought)?.text
+        || parts.find((p) => p.text)?.text
+        || "I couldn't generate a response. Please try again.";
 
       // Save model turn to history for next message
       history.push({ role: 'model', parts: [{ text: reply }] });

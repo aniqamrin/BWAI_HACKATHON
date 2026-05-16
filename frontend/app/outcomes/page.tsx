@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { outcomesApi, relationshipsApi } from "@/lib/api";
 import { toast } from "@/components/ui/toaster";
-import { timeAgo } from "@/lib/utils";
 
 const successColors: Record<string, string> = {
   high: "bg-green-500/15 text-green-400 border-green-500/30",
@@ -36,7 +35,7 @@ export default function OutcomesPage() {
     Promise.all([
       outcomesApi.getAll(),
       outcomesApi.getInsights(),
-      relationshipsApi.getAll({ status: "completed" }),
+      relationshipsApi.getAll({ status: "active" }),
     ]).then(([outRes, insRes, relRes]: any[]) => {
       setOutcomes(outRes.data?.outcomes || []);
       setInsights(insRes.data);
@@ -265,7 +264,7 @@ export default function OutcomesPage() {
                 <label className="text-xs text-muted-foreground mb-1 block">Relationship *</label>
                 <select className="w-full rounded-lg px-3 py-2 text-sm bg-background border border-white/10 text-foreground focus:outline-none"
                   value={form.relationship_id} onChange={e => setForm({ ...form, relationship_id: e.target.value })}>
-                  <option value="">Select a completed relationship</option>
+                  <option value="">Select a relationship</option>
                   {relationships.map((r: any) => (
                     <option key={r.id} value={r.id}>{r.startup_name} ↔ {r.mentor_name || r.programme_name || "Partner"}</option>
                   ))}

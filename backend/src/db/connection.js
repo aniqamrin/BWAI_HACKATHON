@@ -1,12 +1,18 @@
 const { Pool } = require('pg');
 const logger = require('../utils/logger');
 
+// Unix socket connections (Cloud SQL via /cloudsql/...) don't support SSL
+const isUnixSocket = (process.env.DATABASE_URL || '').includes('host=/');
+const sslConfig = isUnixSocket ? false
+  : process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false }
+  : false;
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: sslConfig
 });
 
 pool.on('error', (err) => {

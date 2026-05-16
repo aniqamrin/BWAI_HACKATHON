@@ -21,17 +21,13 @@ const dashboardRoutes = require('./src/routes/dashboard');
 const graphRoutes = require('./src/routes/graph');
 const investorRoutes = require('./src/routes/investors');
 const firestoreRoutes = require('./src/routes/firestore');
-<<<<<<< HEAD
 const agentRoutes = require('./src/routes/agent');
 const agentToolRoutes = require('./src/routes/agentTools');
-=======
-// New routes
 const blueprintRoutes = require('./src/routes/blueprints');
 const governanceRoutes = require('./src/routes/governance');
 const cohortRoutes = require('./src/routes/cohorts');
 const outcomeRoutes = require('./src/routes/outcomes');
 const lifecycleRoutes = require('./src/routes/lifecycle');
->>>>>>> eb54d19a19b01d6789032297059c2a17518b5d21
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -89,17 +85,13 @@ app.use('/api/relationships', relationshipRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/graph', graphRoutes);
 app.use('/api/firestore', firestoreRoutes);
-<<<<<<< HEAD
 app.use('/api/agent', agentRoutes);
 app.use('/api/agent/tools', agentToolRoutes);
-=======
-// New routes
 app.use('/api/blueprints', blueprintRoutes);
 app.use('/api/governance', governanceRoutes);
 app.use('/api/cohorts', cohortRoutes);
 app.use('/api/outcomes', outcomeRoutes);
 app.use('/api/lifecycle', lifecycleRoutes);
->>>>>>> eb54d19a19b01d6789032297059c2a17518b5d21
 
 // 404
 app.use('*', (req, res) => res.status(404).json({ error: 'Route not found', path: req.originalUrl }));

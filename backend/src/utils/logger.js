@@ -18,9 +18,7 @@ const logger = winston.createLogger({
   ]
 });
 
-if (process.env.NODE_ENV === 'production') {
-  logger.add(new winston.transports.File({ filename: 'logs/error.log', level: 'error' }));
-  logger.add(new winston.transports.File({ filename: 'logs/combined.log' }));
-}
+// REMOVED the production File transports entirely. 
+// Cloud Run logs are better handled via the console/stdout.
 
 module.exports = logger;

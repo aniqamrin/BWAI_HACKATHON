@@ -144,6 +144,15 @@ function getMockResponse(type) {
         { reason: 'Mentor expertise directly matches startup growth needs', potential_score: 82 }
       ]
     },
+    investor_match: {
+      fit_score: 72 + Math.random() * 22,
+      confidence_score: 68 + Math.random() * 22,
+      thesis_alignment: 0.74 + Math.random() * 0.2,
+      stage_fit: 'good',
+      ticket_fit: 'within_range',
+      reasoning: 'Strong thesis alignment based on industry and growth stage. The startup\'s traction metrics fall within the investor\'s typical portfolio profile, and the sector focus matches their stated investment mandate.',
+      recommendation: 'pitch'
+    },
     generic: {
       status: 'success',
       message: 'AI analysis completed',

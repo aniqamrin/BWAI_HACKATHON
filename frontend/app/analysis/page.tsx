@@ -1,298 +1,252 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Activity, Upload, RefreshCw, CheckCircle, Clock, Circle,
-  TrendingUp, AlertTriangle, Info, Download, ShieldAlert,
-  Sparkles, Filter, Brain, Zap
+  Activity, AlertTriangle, CheckCircle, Zap, RefreshCw,
+  BarChart3, Clock, Users,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { lifecycleApi } from "@/lib/api";
+import { toast } from "@/components/ui/toaster";
+import { timeAgo } from "@/lib/utils";
 
-const signals = [
-  {
-    timestamp: "2024-03-15 10:14:22",
-    responseTime: "450ms",
-    sentiment: 0.84,
-    sentimentLabel: "High",
-    frequency: "12/hr",
-    status: "PROCESSED",
-  },
-  {
-    timestamp: "2024-03-15 10:14:45",
-    responseTime: "1,200ms",
-    sentiment: 0.32,
-    sentimentLabel: "Neutral",
-    frequency: "8/hr",
-    status: "ANALYZING",
-  },
-  {
-    timestamp: "2024-03-15 10:15:02",
-    responseTime: "89ms",
-    sentiment: -0.12,
-    sentimentLabel: "Risk",
-    frequency: "42/hr",
-    status: "ALERT",
-  },
-];
-
-const statusConfig = {
-  PROCESSED: { color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20", border: "border-emerald-400/20" },
-  ANALYZING: { color: "text-primary", bg: "bg-primary/10 border-primary/20", border: "border-primary/20" },
-  ALERT: { color: "text-red-400", bg: "bg-red-400/10 border-red-400/20", border: "border-red-400/20" },
-};
-
-const sentimentColor = (score: number) => {
-  if (score > 0.5) return "bg-emerald-400";
-  if (score > 0) return "bg-yellow-400";
-  return "bg-red-400";
-};
+function SignalBar({ label, value, max, unit, color = "violet" }: {
+  label: string; value: number; max: number; unit?: string; color?: string;
+}) {
+  const pct = Math.min(100, max > 0 ? (value / max) * 100 : 0);
+  const colorMap: Record<string, string> = {
+    violet: "from-violet-600 to-blue-500",
+    green:  "from-green-600 to-emerald-500",
+    yellow: "from-yellow-600 to-amber-500",
+    red:    "from-red-600 to-orange-500",
+    blue:   "from-blue-600 to-cyan-500",
+  };
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-[11px]">
+        <span className="text-muted-foreground truncate mr-2">{label}</span>
+        <span className="font-semibold tabular-nums flex-shrink-0">
+          {typeof value === "number" ? (Number.isInteger(value) ? value : value.toFixed(1)) : value}
+          {unit && <span className="text-muted-foreground ml-0.5">{unit}</span>}
+        </span>
+      </div>
+      <div className="h-1 rounded-full bg-white/8 overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className={`h-full rounded-full bg-gradient-to-r ${colorMap[color]}`}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function BehavioralSignalsPage() {
-  const [isDragging, setIsDragging] = useState(false);
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false);
+
+  const load = () => {
+    setLoading(true);
+    (lifecycleApi as any).getSignals().then((res: any) => {
+      setData(res.data);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleScan = async () => {
+    setScanning(true);
+    try {
+      await lifecycleApi.run();
+      toast({ title: "Lifecycle scan complete — signals updated", variant: "success" });
+      load();
+    } catch {
+      toast({ title: "Scan failed", variant: "error" });
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const signals: any[] = data?.signals || [];
+  const atRisk = signals.filter((s: any) => s.composite_index < 50);
+  const healthy = signals.filter((s: any) => s.composite_index >= 75);
 
   return (
     <DashboardLayout>
       <PageHeader
         title="Behavioral Signals"
-        description="Upload interaction logs to identify cognitive biases and engagement patterns"
+        description="Composite Engagement Index per relationship — drops below 50 trigger automated alerts"
         icon={Activity}
+        badge={`${signals.length} monitored`}
+        action={
+          <Button onClick={handleScan} disabled={scanning} className="gap-2">
+            {scanning
+              ? <div className="w-3.5 h-3.5 rounded-full border border-white/30 border-t-white animate-spin" />
+              : <RefreshCw className="w-3.5 h-3.5" />}
+            Run Lifecycle Scan
+          </Button>
+        }
       />
 
-      <div className="space-y-6">
-        {/* Upload Zone */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={() => setIsDragging(false)}
-          className={`
-            rounded-2xl border-2 border-dashed p-12 flex flex-col items-center justify-center text-center gap-4
-            transition-all duration-200 cursor-pointer
-            ${isDragging
-              ? "border-primary bg-primary/5"
-              : "border-white/10 bg-white/[0.02] hover:border-primary/40 hover:bg-primary/[0.03]"
-            }
-          `}
-        >
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600/20 to-blue-600/20 border border-violet-500/20 flex items-center justify-center">
-            <Upload className="w-7 h-7 text-violet-400" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">Drop behavioral log files here</h3>
-            <p className="text-sm text-muted-foreground mt-1">Supports .csv, .xlsx &mdash; max 50MB</p>
-          </div>
-          <Button className="mt-2 bg-primary hover:bg-primary/90">
-            <Upload className="w-4 h-4 mr-2" />
-            Process Behavioral Data
-          </Button>
-        </motion.div>
-
-        {/* Analysis Progress */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="glass-card">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <RefreshCw className="w-4 h-4 text-primary animate-spin" />
-                  <CardTitle className="text-sm">Analyzing Signal Clusters...</CardTitle>
-                </div>
-                <span className="text-sm font-semibold text-primary">64%</span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Progress value={64} className="h-1.5" />
-              <div className="grid grid-cols-3 gap-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                  <span className="text-xs font-medium">Data Sanitization</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-primary animate-pulse flex-shrink-0" />
-                  <span className="text-xs font-medium">Sentiment Mapping</span>
-                </div>
-                <div className="flex items-center gap-2 opacity-40">
-                  <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-xs font-medium">Predictive Modeling</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Main Grid: Table + AI Insights */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Signal Table */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="xl:col-span-2"
-          >
-            <Card className="glass-card">
-              <CardHeader className="border-b border-white/8 pb-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm">Raw Signal Preview</CardTitle>
-                  <Button variant="ghost" size="sm" className="text-xs text-muted-foreground gap-1">
-                    <Filter className="w-3.5 h-3.5" />
-                    Filter Columns
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="border-b border-white/8">
-                      <tr className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                        <th className="px-5 py-3 font-semibold">Timestamp</th>
-                        <th className="px-5 py-3 font-semibold">Response Time</th>
-                        <th className="px-5 py-3 font-semibold">Sentiment</th>
-                        <th className="px-5 py-3 font-semibold">Frequency</th>
-                        <th className="px-5 py-3 font-semibold">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {signals.map((row, i) => {
-                        const cfg = statusConfig[row.status as keyof typeof statusConfig];
-                        return (
-                          <motion.tr
-                            key={i}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.3 + i * 0.08 }}
-                            className="hover:bg-white/[0.03] transition-colors"
-                          >
-                            <td className="px-5 py-4 text-xs font-mono text-muted-foreground whitespace-nowrap">{row.timestamp}</td>
-                            <td className="px-5 py-4 text-xs">{row.responseTime}</td>
-                            <td className="px-5 py-4">
-                              <div className="flex items-center gap-2">
-                                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${sentimentColor(row.sentiment)}`} />
-                                <span className="text-xs">{row.sentiment.toFixed(2)} <span className="text-muted-foreground">({row.sentimentLabel})</span></span>
-                              </div>
-                            </td>
-                            <td className="px-5 py-4 text-xs">{row.frequency}</td>
-                            <td className="px-5 py-4">
-                              <span className={`text-[10px] px-2 py-1 rounded-full font-bold border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
-                                {row.status}
-                              </span>
-                            </td>
-                          </motion.tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {[
+          { label: "Relationships Monitored", value: signals.length, icon: Users, color: "text-violet-400" },
+          { label: "Avg Composite Index", value: data?.avg_composite_index ?? "—", icon: BarChart3, color: "text-blue-400" },
+          { label: "At Risk (CEI < 50)", value: atRisk.length, icon: AlertTriangle, color: "text-red-400" },
+          { label: "High Engagement (≥ 75)", value: healthy.length, icon: CheckCircle, color: "text-green-400" },
+        ].map((stat, i) => (
+          <motion.div key={stat.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+            <Card glass>
+              <CardContent className="p-4 flex items-center gap-3">
+                <stat.icon className={`w-5 h-5 ${stat.color} flex-shrink-0`} />
+                <div>
+                  <p className="text-xl font-black gradient-text">{stat.value}</p>
+                  <p className="text-xs text-muted-foreground leading-tight">{stat.label}</p>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
-
-          {/* AI Insights Panel */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="flex flex-col gap-4"
-          >
-            {/* Behavioral Trends */}
-            <Card className="glass-card">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-violet-400" />
-                  <CardTitle className="text-sm">AI Insights</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-600/10 to-blue-600/10 p-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Behavioral Trends</span>
-                  </div>
-                  <ul className="space-y-3">
-                    <li className="flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-xs text-muted-foreground">Rapid response velocity detected — possible anxiety signal</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-xs text-muted-foreground">Strong alignment in technical vocabulary usage</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <Info className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-xs text-muted-foreground">Slight engagement drop during pricing discussions</span>
-                    </li>
-                  </ul>
-                </div>
-                <Button variant="outline" size="sm" className="w-full text-xs gap-2">
-                  <Download className="w-3.5 h-3.5" />
-                  Download Report
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Risk Map */}
-            <Card className="glass-card">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Brain className="w-4 h-4 text-violet-400" />
-                  Risk Intensity Map
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="p-3 rounded-lg border-l-4 border-red-500 bg-red-500/5">
-                  <p className="text-xs font-semibold text-red-400">Burnout Risk: High</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Pattern: Late night active bursts</p>
-                </div>
-                <div className="p-3 rounded-lg border-l-4 border-primary bg-primary/5">
-                  <p className="text-xs font-semibold text-foreground">Consistency: Stable</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Pattern: Morning alignment</p>
-                </div>
-                <Button size="sm" className="w-full text-xs gap-2 bg-primary hover:bg-primary/90">
-                  <ShieldAlert className="w-3.5 h-3.5" />
-                  Mitigation Plan
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Confidence */}
-            <Card className="glass-card">
-              <CardContent className="pt-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold">Analysis Confidence</span>
-                  <div className="flex items-center gap-1.5 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full">
-                    <Zap className="w-3 h-3 text-emerald-400" />
-                    <span className="text-[10px] font-bold text-emerald-400">HIGH</span>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-[10px] text-muted-foreground">
-                    <span>Accuracy</span>
-                    <span className="font-semibold text-emerald-400">88%</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: "88%" }}
-                      transition={{ duration: 1, delay: 0.6 }}
-                      className="h-full rounded-full bg-emerald-400"
-                    />
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground italic">Based on cross-referenced behavioral nodes</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
+        ))}
       </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-52 rounded-xl shimmer" />)}
+        </div>
+      ) : signals.length === 0 ? (
+        <div className="text-center py-24">
+          <Activity className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-20" />
+          <p className="text-muted-foreground mb-2">No behavioral signals computed yet</p>
+          <p className="text-xs text-muted-foreground mb-4">Run a lifecycle scan to compute signals for all active relationships</p>
+          <Button onClick={handleScan} disabled={scanning} className="gap-2">
+            <Zap className="w-4 h-4" /> Run Scan Now
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* At-risk section */}
+          {atRisk.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-4 h-4 text-red-400" />
+                <h2 className="text-sm font-semibold text-red-400">At Risk — CEI Below 50</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {atRisk.map((sig: any, i: number) => (
+                  <SignalCard key={sig.id} sig={sig} i={i} highlight="red" />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* All signals */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart3 className="w-4 h-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold text-muted-foreground">All Monitored Relationships</h2>
+              <span className="text-xs text-muted-foreground">(sorted by CEI, lowest first)</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {signals.map((sig: any, i: number) => (
+                <SignalCard key={sig.id} sig={sig} i={i} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
+  );
+}
+
+function SignalCard({ sig, i, highlight }: { sig: any; i: number; highlight?: string }) {
+  const cei = parseFloat(sig.composite_index || 0);
+  const ceiColor = cei >= 75 ? "text-green-400" : cei >= 50 ? "text-yellow-400" : "text-red-400";
+  const borderClass = highlight === "red" ? "border-red-500/20" : "";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: i * 0.04 }}
+    >
+      <Card glass className={`h-full ${borderClass}`}>
+        <CardContent className="p-4">
+          {/* Header */}
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <p className="text-sm font-semibold">{sig.startup_name || "Unknown"}</p>
+              <p className="text-xs text-muted-foreground">
+                ↔ {sig.mentor_name || "Programme/Investor"} · {sig.relationship_type?.replace("_", " ")}
+              </p>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <p className={`text-2xl font-black tabular-nums ${ceiColor}`}>{cei.toFixed(0)}</p>
+              <p className="text-[9px] text-muted-foreground">CEI / 100</p>
+            </div>
+          </div>
+
+          {/* CEI bar */}
+          <div className="mb-3">
+            <div className="h-2 rounded-full bg-white/8 overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(100, cei)}%` }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className={`h-full rounded-full bg-gradient-to-r ${
+                  cei >= 75 ? "from-green-600 to-emerald-500"
+                  : cei >= 50 ? "from-yellow-600 to-amber-500"
+                  : "from-red-600 to-orange-500"
+                }`}
+              />
+            </div>
+          </div>
+
+          {/* 5 signal bars */}
+          <div className="space-y-2">
+            <SignalBar
+              label="Meeting Commitment"
+              value={Math.round((sig.meeting_commitment_ratio || 0) * 100)}
+              max={100} unit="%" color="green"
+            />
+            <SignalBar
+              label="Milestone Completion"
+              value={Math.round((sig.milestone_completion_rate || 0) * 100)}
+              max={100} unit="%" color="violet"
+            />
+            <SignalBar
+              label="Followthrough Rate"
+              value={Math.round((sig.next_action_followthrough_rate || 0) * 100)}
+              max={100} unit="%" color="blue"
+            />
+            <SignalBar
+              label="Engagement Velocity"
+              value={parseFloat(sig.engagement_velocity || 0)}
+              max={1} color={sig.engagement_velocity >= 0.5 ? "green" : "yellow"}
+            />
+            <SignalBar
+              label="Response Latency"
+              value={parseFloat(sig.avg_response_latency_hours || 0)}
+              max={24} unit="h"
+              color={sig.avg_response_latency_hours < 8 ? "green" : "red"}
+            />
+          </div>
+
+          {sig.computed_at && (
+            <p className="text-[10px] text-muted-foreground mt-3 pt-2 border-t border-white/5 flex items-center gap-1">
+              <Clock className="w-2.5 h-2.5" />
+              Computed {timeAgo(sig.computed_at)}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }

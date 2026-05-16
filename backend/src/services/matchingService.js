@@ -1,6 +1,6 @@
 const { generateContent } = require('./geminiService');
 const { query } = require('../db/connection');
-const { buildMentorMatchPrompt, buildProgrammeMatchPrompt } = require('../prompts/matchingPrompt');
+const { buildMentorMatchPrompt, buildProgrammeMatchPrompt, buildInvestorMatchPrompt } = require('../prompts/matchingPrompt');
 const logger = require('../utils/logger');
 
 async function matchMentorsForStartup(startupId, limit = 5) {
@@ -136,4 +136,63 @@ async function matchProgrammesForStartup(startupId, limit = 5) {
   }
 }
 
-module.exports = { matchMentorsForStartup, matchProgrammesForStartup };
+async function matchInvestorsForStartup(startupId, limit = 5) {
+  try {
+    const startupResult = await query('SELECT * FROM startups WHERE id = $1', [startupId]);
+    if (!startupResult.rows[0]) throw new Error('Startup not found');
+    const startup = startupResult.rows[0];
+
+    const investorsResult = await query(
+      `SELECT i.*, u.full_name, u.email
+       FROM investors i
+       JOIN users u ON i.user_id = u.id
+       WHERE i.is_active = true
+       ORDER BY i.portfolio_size DESC
+       LIMIT 10`
+    );
+
+    const investors = investorsResult.rows;
+    if (investors.length === 0) return [];
+
+    const matchPromises = investors.map(async (investor) => {
+      try {
+        const prompt = buildInvestorMatchPrompt(startup, investor);
+        const aiResult = await generateContent(prompt, {
+          mockType: 'investor_match',
+          temperature: 0.3
+        });
+
+        return {
+          investor_id: investor.id,
+          investor_name: investor.full_name,
+          firm_name: investor.firm_name,
+          investment_thesis: investor.investment_thesis,
+          focus_industries: investor.focus_industries,
+          investment_stages: investor.investment_stages,
+          ticket_size_min: investor.ticket_size_min,
+          ticket_size_max: investor.ticket_size_max,
+          portfolio_size: investor.portfolio_size,
+          fit_score: parseFloat(aiResult.fit_score) || 70,
+          confidence_score: parseFloat(aiResult.confidence_score) || 65,
+          thesis_alignment: aiResult.thesis_alignment || 0.7,
+          stage_fit: aiResult.stage_fit || 'good',
+          ticket_fit: aiResult.ticket_fit || 'within_range',
+          reasoning: aiResult.reasoning || 'Good investment fit based on industry and stage alignment',
+          recommendation: aiResult.recommendation || 'pitch',
+        };
+      } catch (err) {
+        logger.error(`Error matching investor ${investor.id}:`, err);
+        return null;
+      }
+    });
+
+    const results = (await Promise.all(matchPromises)).filter(Boolean);
+    results.sort((a, b) => b.fit_score - a.fit_score);
+    return results.slice(0, limit);
+  } catch (error) {
+    logger.error('Investor matching error:', error);
+    throw error;
+  }
+}
+
+module.exports = { matchMentorsForStartup, matchProgrammesForStartup, matchInvestorsForStartup };

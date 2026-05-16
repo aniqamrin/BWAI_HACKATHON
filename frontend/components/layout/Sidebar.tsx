@@ -5,12 +5,9 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard, Network, Users, GraduationCap, Briefcase,
-<<<<<<< HEAD
-  Building2, GitBranch, BarChart3, Settings, LogOut, Zap, Shield, Sparkles, Activity, Bot
-=======
-  Building2, GitBranch, BarChart3, LogOut, Zap, Shield, Sparkles, Activity,
-  BookTemplate, Trophy, Layers, ShieldCheck
->>>>>>> eb54d19a19b01d6789032297059c2a17518b5d21
+  Building2, GitBranch, BarChart3, Settings, LogOut, Zap, 
+  Shield, Sparkles, Activity, Bot, BookTemplate, Trophy, 
+  Layers, ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
