@@ -71,6 +71,24 @@ type LensConfig = {
   conclusionText: string;
 };
 
+type MapActor = {
+  label: string;
+  role: string;
+  x: string;
+  y: string;
+  tone: string;
+};
+
+type MapLine = {
+  x1: string;
+  y1: string;
+  x2: string;
+  y2: string;
+  stroke: string;
+  strokeWidth: string;
+  strokeDasharray?: string;
+};
+
 const externalSignals: Signal[] = [
   {
     label: 'LinkedIn anchor',
@@ -349,7 +367,7 @@ const lensConfigs: Record<LensId, LensConfig> = {
   },
 };
 
-const actors = [
+const companyMapActors: MapActor[] = [
   { label: 'PulseGrid', role: 'Health data company', x: '48%', y: '44%', tone: 'bg-[#17211c] text-[#fffaf0]' },
   { label: 'Priya Raman', role: 'Technical mentor', x: '18%', y: '18%', tone: 'bg-[#f7f1e5] text-[#17211c]' },
   { label: 'MedReg Studio', role: 'Service provider', x: '18%', y: '68%', tone: 'bg-[#e7d4bc] text-[#17211c]' },
@@ -357,6 +375,43 @@ const actors = [
   { label: 'Hospital Network', role: 'Partner initiative', x: '76%', y: '67%', tone: 'bg-[#f0dfbf] text-[#17211c]' },
   { label: 'Programme admin', role: 'Governance owner', x: '49%', y: '86%', tone: 'bg-[#fbf4e7] text-[#17211c]' },
 ];
+
+const serviceProviderMapActors: MapActor[] = [
+  { label: 'MedReg Studio', role: 'Service provider', x: '48%', y: '44%', tone: 'bg-[#17211c] text-[#fffaf0]' },
+  { label: 'PulseGrid', role: 'Regulatory sprint', x: '18%', y: '20%', tone: 'bg-[#f7f1e5] text-[#17211c]' },
+  { label: 'Health Sandbox', role: 'Office hours', x: '76%', y: '20%', tone: 'bg-[#dce6d8] text-[#17211c]' },
+  { label: 'Readiness Clinic', role: 'Reusable service', x: '18%', y: '68%', tone: 'bg-[#e7d4bc] text-[#17211c]' },
+  { label: 'Provider Capacity', role: 'Governance check', x: '76%', y: '68%', tone: 'bg-[#f0dfbf] text-[#17211c]' },
+  { label: 'Programme admin', role: 'Approval owner', x: '49%', y: '86%', tone: 'bg-[#fbf4e7] text-[#17211c]' },
+];
+
+const companyMapLines: MapLine[] = [
+  { x1: '48%', y1: '44%', x2: '18%', y2: '18%', stroke: '#45624f', strokeWidth: '2.5' },
+  { x1: '48%', y1: '44%', x2: '18%', y2: '68%', stroke: '#45624f', strokeWidth: '2.5' },
+  { x1: '48%', y1: '44%', x2: '73%', y2: '18%', stroke: '#ad8448', strokeWidth: '2.5', strokeDasharray: '7 5' },
+  { x1: '48%', y1: '44%', x2: '76%', y2: '67%', stroke: '#934439', strokeWidth: '2.5', strokeDasharray: '4 6' },
+  { x1: '49%', y1: '86%', x2: '73%', y2: '18%', stroke: '#9d8f77', strokeWidth: '1.5', strokeDasharray: '3 6' },
+  { x1: '49%', y1: '86%', x2: '76%', y2: '67%', stroke: '#9d8f77', strokeWidth: '1.5', strokeDasharray: '3 6' },
+];
+
+const serviceProviderMapLines: MapLine[] = [
+  { x1: '48%', y1: '44%', x2: '18%', y2: '20%', stroke: '#45624f', strokeWidth: '2.5' },
+  { x1: '48%', y1: '44%', x2: '76%', y2: '20%', stroke: '#45624f', strokeWidth: '2.5' },
+  { x1: '48%', y1: '44%', x2: '18%', y2: '68%', stroke: '#ad8448', strokeWidth: '2.5', strokeDasharray: '7 5' },
+  { x1: '48%', y1: '44%', x2: '76%', y2: '68%', stroke: '#934439', strokeWidth: '2.5', strokeDasharray: '4 6' },
+  { x1: '49%', y1: '86%', x2: '76%', y2: '68%', stroke: '#9d8f77', strokeWidth: '1.5', strokeDasharray: '3 6' },
+  { x1: '49%', y1: '86%', x2: '76%', y2: '20%', stroke: '#9d8f77', strokeWidth: '1.5', strokeDasharray: '3 6' },
+];
+
+const mapActorsByLens: Record<Exclude<LensId, 'partner-rankings'>, MapActor[]> = {
+  company: companyMapActors,
+  'service-provider': serviceProviderMapActors,
+};
+
+const mapLinesByLens: Record<Exclude<LensId, 'partner-rankings'>, MapLine[]> = {
+  company: companyMapLines,
+  'service-provider': serviceProviderMapLines,
+};
 
 function StatusPill({ status }: { status: DisplayStatus }) {
   const classes = {
@@ -401,6 +456,8 @@ function RelationshipMap({
   title,
   question,
   badge,
+  mapActors,
+  mapLines,
 }: {
   evidenceProcessed: boolean;
   approvedCount: number;
@@ -409,6 +466,8 @@ function RelationshipMap({
   title: string;
   question: string;
   badge: string;
+  mapActors: MapActor[];
+  mapLines: MapLine[];
 }) {
   return (
     <div className="relative min-h-[560px] overflow-hidden border border-[#17211c] bg-[#fffaf0]">
@@ -426,15 +485,21 @@ function RelationshipMap({
 
       <div className="absolute inset-x-0 bottom-[82px] top-[166px] lg:top-[112px]">
         <svg className="absolute inset-0 h-full w-full" aria-hidden>
-          <line x1="48%" y1="44%" x2="18%" y2="18%" stroke="#45624f" strokeWidth="2.5" />
-          <line x1="48%" y1="44%" x2="18%" y2="68%" stroke="#45624f" strokeWidth="2.5" />
-          <line x1="48%" y1="44%" x2="73%" y2="18%" stroke="#ad8448" strokeWidth="2.5" strokeDasharray="7 5" />
-          <line x1="48%" y1="44%" x2="76%" y2="67%" stroke="#934439" strokeWidth="2.5" strokeDasharray="4 6" />
-          <line x1="49%" y1="86%" x2="73%" y2="18%" stroke="#9d8f77" strokeWidth="1.5" strokeDasharray="3 6" />
-          <line x1="49%" y1="86%" x2="76%" y2="67%" stroke="#9d8f77" strokeWidth="1.5" strokeDasharray="3 6" />
+          {mapLines.map((line, index) => (
+            <line
+              key={`${line.x1}-${line.y1}-${line.x2}-${line.y2}-${index}`}
+              x1={line.x1}
+              y1={line.y1}
+              x2={line.x2}
+              y2={line.y2}
+              stroke={line.stroke}
+              strokeWidth={line.strokeWidth}
+              strokeDasharray={line.strokeDasharray}
+            />
+          ))}
         </svg>
 
-        {actors.map((actor) => (
+        {mapActors.map((actor) => (
           <div
             key={actor.label}
             className={`absolute w-[136px] -translate-x-1/2 -translate-y-1/2 border border-[#17211c] px-3 py-2.5 shadow-[4px_4px_0_#9d8f77] ${actor.tone}`}
@@ -546,6 +611,8 @@ export function EcosystemCommandCenter() {
   );
   const approvedCount = Object.values(decisions).filter((decision) => decision === 'approved').length;
   const evidenceRequestCount = Object.values(decisions).filter((decision) => decision === 'evidence-requested').length;
+  const relationshipMapLens: Exclude<LensId, 'partner-rankings'> =
+    activeLensId === 'service-provider' ? 'service-provider' : 'company';
 
   function displayStatusFor(action: Action): DisplayStatus {
     if (decisions[action.id] === 'approved') return 'Approved';
@@ -565,8 +632,8 @@ export function EcosystemCommandCenter() {
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#ede4d1] px-3 py-4 text-[#17211c] sm:px-5 sm:py-5">
-      <div className="mx-auto w-full max-w-[1540px] min-w-0 border border-[#17211c] bg-[#f7f1e5] shadow-[6px_6px_0_#17211c] sm:shadow-[8px_8px_0_#17211c]">
-        <header className="grid min-w-0 grid-cols-1 border-b border-[#17211c] xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="mx-auto w-full max-w-[1280px] min-w-0 border border-[#17211c] bg-[#f7f1e5] shadow-[6px_6px_0_#17211c] sm:shadow-[8px_8px_0_#17211c]">
+        <header className="grid min-w-0 grid-cols-1 border-b border-[#17211c]">
           <div className="min-w-0 px-5 py-5 sm:px-7 sm:py-6">
             <p className="ui-sans text-[0.7rem] font-bold uppercase tracking-[0.18em] text-[#657064]">
               Cohort Atlas experiment
@@ -582,7 +649,7 @@ export function EcosystemCommandCenter() {
               signals so programme teams get relationship recommendations without asking everyone to fill another form.
             </p>
           </div>
-          <div className="min-w-0 border-t border-[#17211c] bg-[#fffaf0] px-5 py-5 sm:px-6 sm:py-6 xl:border-l xl:border-t-0">
+          <div className="min-w-0 border-t border-[#17211c] bg-[#fffaf0] px-5 py-5 sm:px-7">
             <p className="ui-sans text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Operating promise</p>
             <p className="mt-3 text-xl font-semibold leading-tight sm:text-2xl">
               Automate discovery and evidence. Keep humans on judgement and governance.
@@ -590,7 +657,7 @@ export function EcosystemCommandCenter() {
           </div>
         </header>
 
-        <section className="grid min-w-0 grid-cols-1 items-end gap-4 border-b border-[#17211c] bg-[#fbf4e7] px-5 py-5 lg:grid-cols-[minmax(0,1fr)_auto] sm:px-7">
+        <section className="grid min-w-0 grid-cols-1 gap-4 border-b border-[#17211c] bg-[#fbf4e7] px-5 py-5 sm:px-7">
           <div className="min-w-0">
             <div className="mb-4">
               <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Operating lens</p>
@@ -627,7 +694,7 @@ export function EcosystemCommandCenter() {
             </div>
           </div>
           <button
-            className="ui-sans flex min-h-[54px] w-full items-center justify-center gap-2 border border-[#17211c] bg-[#17211c] px-5 py-3 text-sm font-bold uppercase tracking-[0.08em] text-[#fffaf0] shadow-[4px_4px_0_#9d8f77] lg:w-auto"
+            className="ui-sans flex min-h-[54px] w-full items-center justify-center gap-2 border border-[#17211c] bg-[#17211c] px-5 py-3 text-sm font-bold uppercase tracking-[0.08em] text-[#fffaf0] shadow-[4px_4px_0_#9d8f77]"
             onClick={() => {
               setEvidenceProcessed(true);
               setSelectedActionId(activeLens.processedSelectionId);
@@ -663,7 +730,7 @@ export function EcosystemCommandCenter() {
           </section>
         ) : null}
 
-        <section className="grid min-w-0 grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[310px_minmax(0,1fr)_390px]">
+        <section className="grid min-w-0 grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="min-w-0 border-b border-[#17211c] bg-[#fbf4e7] xl:border-b-0 xl:border-r">
             <div className="border-b border-[#17211c] px-5 py-5">
               <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">{activeLens.profileLabel}</p>
@@ -708,17 +775,19 @@ export function EcosystemCommandCenter() {
                 title={activeLens.mapTitle}
                 question={activeLens.mapQuestion}
                 badge={activeLens.mapBadge}
+                mapActors={mapActorsByLens[relationshipMapLens]}
+                mapLines={mapLinesByLens[relationshipMapLens]}
               />
             )}
           </section>
 
-          <aside className="min-w-0 border-t border-[#17211c] bg-[#fbf4e7] xl:col-span-2 2xl:col-span-1 2xl:border-l 2xl:border-t-0">
+          <aside className="min-w-0 border-t border-[#17211c] bg-[#fbf4e7] xl:col-span-2">
             <div className="border-b border-[#17211c] px-5 py-5">
               <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">{activeLens.queueEyebrow}</p>
               <h2 className="mt-2 text-3xl font-semibold leading-none">{activeLens.queueTitle}</h2>
             </div>
             {activeLensId !== 'partner-rankings' ? (
-              <div className="grid divide-y divide-[#cab99d] lg:grid-cols-2 lg:divide-x lg:divide-y-0 2xl:block 2xl:divide-x-0 2xl:divide-y">
+              <div className="grid divide-y divide-[#cab99d] lg:grid-cols-2 lg:divide-x lg:divide-y-0">
                 {activeActions.map((action) => (
                   <article key={action.title} className="bg-[#fffaf0] px-5 py-4">
                     <div className="flex items-start justify-between gap-3">
@@ -808,7 +877,7 @@ export function EcosystemCommandCenter() {
           </div>
         </section>
 
-        <section className="grid min-w-0 grid-cols-1 border-t border-[#17211c] bg-[#17211c] text-[#fffaf0] xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="grid min-w-0 grid-cols-1 border-t border-[#17211c] bg-[#17211c] text-[#fffaf0] xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="px-5 py-6 sm:px-7">
             <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#d9cfbd]">Conclusion layer</p>
             <h2 className="mt-2 text-3xl font-semibold leading-tight">{activeLens.conclusionTitle}</h2>

@@ -54,6 +54,8 @@ describe('App', () => {
     expect(screen.getByText('Provider deployment queue')).toBeVisible();
     expect(screen.getByText('Which companies or programmes should this provider support next?')).toBeVisible();
     expect(screen.getAllByText('PulseGrid regulatory sprint')).toHaveLength(2);
+    expect(screen.getByText('Provider Capacity')).toBeVisible();
+    expect(screen.getByText('Readiness Clinic')).toBeVisible();
   });
 
   it('shows ranked partner opportunities in the partner lens', async () => {
