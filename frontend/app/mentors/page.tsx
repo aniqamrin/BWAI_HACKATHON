@@ -214,7 +214,9 @@ export default function MentorsPage() {
                             <Zap className="w-3.5 h-3.5 text-yellow-400" />
                             <span className="text-xs text-muted-foreground">{match.estimated_impact}</span>
                           </div>
-                          <Button variant="gradient" size="sm">Connect</Button>
+                          <span className="inline-flex min-h-9 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-xs font-semibold text-muted-foreground">
+                            Intro option
+                          </span>
                         </div>
                       </div>
                     </div>

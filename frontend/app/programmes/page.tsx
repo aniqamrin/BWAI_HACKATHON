@@ -181,7 +181,9 @@ export default function ProgrammesPage() {
                         </span>
                         <span className="text-xs text-muted-foreground">{match.eligibility_assessment?.replace("_", " ")}</span>
                       </div>
-                      <Button variant="gradient" size="sm">Apply Now</Button>
+                      <span className="inline-flex min-h-9 items-center rounded-lg border border-white/10 bg-white/5 px-3 text-xs font-semibold text-muted-foreground">
+                        Application path
+                      </span>
                     </div>
                   </CardContent>
                 </Card>

@@ -13,7 +13,6 @@ import {
   Handshake,
   Link2,
   MessageCircle,
-  Search,
   ShieldCheck,
   Trophy,
   Upload,
@@ -21,7 +20,7 @@ import {
   Users2,
 } from "lucide-react";
 import type { ComponentType } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   relationshipOsFirebaseContract,
@@ -38,9 +37,6 @@ import {
 type Icon = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 type Decision = "approved" | "needs_evidence";
 
-const SAMPLE_WHATSAPP_CSV_PATH = "/demo/relationship-os-whatsapp-sync.csv";
-const LIVE_EVIDENCE_SOURCE_IDS = ["whatsapp-export", "csv-may-sync"];
-
 type CsvEvidenceState = {
   kind: "csv" | "text";
   filename: string;
@@ -53,23 +49,69 @@ type CsvEvidenceState = {
   blockerCount: number;
   rows: Record<string, string>[];
   preview: string[];
+  rawText?: string;
 };
 
-type ProcessedCsvSummary = {
-  rowLabel: string;
-  rowCount: number;
-  relationshipLabel: string;
-  relationshipDetail: string;
-  relationshipCount: number;
+type WhatsAppTag = "ask" | "blocker" | "follow-up" | "missing-evidence" | "partner" | "warmth";
+
+type WhatsAppMessage = {
+  id: string;
+  lineNumber: number;
+  timestamp: string;
+  speaker: string;
+  body: string;
+  rawLine: string;
+  startupId: string | null;
+  tags: WhatsAppTag[];
+};
+
+type EvidenceLine = {
+  id: string;
+  lineNumber: number;
+  speaker: string;
+  text: string;
+  rawLine: string;
+};
+
+type WhatsAppInsight = {
+  startupId: string;
+  title: string;
+  summary: string;
+  status: ActionStatus;
+  confidence: number;
+  reasons: string[];
+  primaryLabel: string;
+  primaryDecision: Decision;
+  evidenceLines: EvidenceLine[];
+};
+
+type WhatsAppAnalysis = {
+  sourceLabel: string;
+  messageCount: number;
+  participantCount: number;
   blockerCount: number;
   unresolvedAskCount: number;
-  partnerSignalCount: number;
-  confidenceValue: string;
-  confidenceDetail: string;
-  topActorLabel: string;
-  topMentorName: string;
-  topMentorScore: number;
+  followUpCount: number;
+  partnerCueCount: number;
+  validationIssues: string[];
+  messages: WhatsAppMessage[];
+  insights: Record<string, WhatsAppInsight>;
 };
+
+const DEMO_WHATSAPP_THREAD = `[15/05/2026, 09:02] Atlas Founder (Maya): Priya, Atlas AI is stuck. The enterprise buyer likes the pilot, but security review keeps bouncing between IT and procurement.
+[15/05/2026, 09:08] Priya Raman: Send me the security objections and the buying committee names. I will map who owns the rollout risk.
+[15/05/2026, 11:41] Atlas Founder (Maya): Sent the notes here. They keep asking who signs off data access. We also promised a pilot timeline, but I am not sure who approves it.
+[15/05/2026, 17:22] Priya Raman: Good progress. Next step: book a 30 minute follow-up. We should rewrite the security narrative around procurement owner, data access, and rollout risk.
+[16/05/2026, 08:14] BWAI Admin (Sara): Atlas follow-up is not on the calendar yet. The security note is still only in WhatsApp.
+[15/05/2026, 10:03] CarbonLoop Founder (Jia): Farah, CarbonLoop has the June grant deadline. We need to know which climate evidence matters before GreenBridge sees the pilot.
+[15/05/2026, 10:16] Farah Lim: The grant story is promising. Please send warehouse pilot economics, recycling volume, and cost savings before any GreenBridge introduction.
+[15/05/2026, 14:48] CarbonLoop Founder (Jia): We have recycling volume, but the warehouse cost savings are still missing. I can send rough numbers by Friday.
+[15/05/2026, 18:05] BWAI Admin (Sara): Hold the GreenBridge intro until the pilot economics are in one page. Otherwise the partner will ask for evidence we cannot show.
+[15/05/2026, 08:55] Nora Founder (Lina): Alicia, Nora Health has a hospital champion excited, but our one-pager says we guarantee reduced clinical admin time.
+[15/05/2026, 09:31] Alicia Mensah: That wording is too absolute for first hospital outreach. Please soften the claim and show workflow evidence instead.
+[15/05/2026, 13:12] Nora Founder (Lina): Thanks, I can revise it. Should we still ask for the hospital introduction this week?
+[15/05/2026, 16:44] Alicia Mensah: Review first, introduction second. Send me the one-pager and I will mark the risky claims.
+[16/05/2026, 08:26] BWAI Admin (Sara): Nora hospital intro is blocked until Alicia reviews the one-pager. This decision is buried in the WhatsApp thread.`;
 
 const sourceIcons: Record<string, Icon> = {
   "whatsapp-export": MessageCircle,
@@ -86,20 +128,18 @@ const lensIcons: Record<LensId, Icon> = {
   evidence: Database,
 };
 
-const statusClasses: Record<ActionStatus | "Approved" | "Evidence requested", string> = {
-  "Auto-ready": "border-[#45624f] bg-[#dce6d8] text-[#263b2d]",
-  "Review suggested": "border-[#ad8448] bg-[#f0dfbf] text-[#6b4a1c]",
-  "Manual evidence needed": "border-[#934439] bg-[#f4d8ce] text-[#743025]",
-  Approved: "border-[#45624f] bg-[#17211c] text-[#fffaf0]",
-  "Evidence requested": "border-[#934439] bg-[#fffaf0] text-[#743025]",
+const statusClasses: Record<ActionStatus | "Approved", string> = {
+  "Auto-ready": "border-[#b4c0b0] bg-[#dce6d8] text-[#657064]",
+  "Review suggested": "border-[#cab99d] bg-[#f7f1e5] text-[#59675e]",
+  "Manual evidence needed": "border-[#c9b0a7] bg-[#f4d8ce] text-[#7d5149]",
+  Approved: "border-[#b4c0b0] bg-[#dce6d8] text-[#657064]",
 };
 
-const statusLabels: Record<ActionStatus | "Approved" | "Evidence requested", string> = {
+const statusLabels: Record<ActionStatus | "Approved", string> = {
   "Auto-ready": "Ready to approve",
   "Review suggested": "Review suggested",
-  "Manual evidence needed": "Needs evidence",
+  "Manual evidence needed": "Needs review",
   Approved: "Approved",
-  "Evidence requested": "Evidence requested",
 };
 
 const primaryActionsByLens: Record<LensId, string> = {
@@ -195,6 +235,7 @@ function summarizeCsvEvidence(filename: string, csvText: string): CsvEvidenceSta
     blockerCount: blockers,
     rows,
     preview: rows.slice(0, 3).map((row) => `${row.mentor_name} with ${row.startup_name}: ${row.blockers_identified}`),
+    rawText: csvText,
   };
 }
 
@@ -205,34 +246,202 @@ function normalizeParticipantId(name: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-function summarizeTextEvidence(filename: string, text: string): CsvEvidenceState {
-  const lines = text
-    .split(/\r?\n|\s\|\s/g)
+function detectStartupId(text: string) {
+  const lowerText = text.toLowerCase();
+
+  if (lowerText.includes("atlas") || lowerText.includes("priya") || lowerText.includes("maya") || lowerText.includes("procurement") || lowerText.includes("security")) return "startup-atlas-ai";
+  if (lowerText.includes("carbonloop") || lowerText.includes("farah") || lowerText.includes("jia") || lowerText.includes("greenbridge") || lowerText.includes("warehouse") || lowerText.includes("climate") || lowerText.includes("grant")) return "startup-carbonloop";
+  if (lowerText.includes("nora") || lowerText.includes("alicia") || lowerText.includes("lina") || lowerText.includes("hospital") || lowerText.includes("clinical") || lowerText.includes("one-pager") || lowerText.includes("risky claims")) return "startup-nora-health";
+
+  return null;
+}
+
+function classifyWhatsAppTags(message: string): WhatsAppTag[] {
+  const lowerMessage = message.toLowerCase();
+  const tags: WhatsAppTag[] = [];
+
+  if (/\?|can you|could you|please|send me|should we|need to|need you|waiting for/.test(lowerMessage)) {
+    tags.push("ask");
+  }
+
+  if (/stuck|blocked|blocker|bouncing|missing|not sure|not ready|risk|too absolute|keeps asking|cannot show|unsure/.test(lowerMessage)) {
+    tags.push("blocker");
+  }
+
+  if (/next step|follow-up|book|schedule|send|review|mark|rewrite|map|revise|i will|we should/.test(lowerMessage)) {
+    tags.push("follow-up");
+  }
+
+  if (/still only in whatsapp|not on the calendar|missing|before any|before greenbridge|cannot show|blocked until|buried/.test(lowerMessage)) {
+    tags.push("missing-evidence");
+  }
+
+  if (/partner|intro|introduction|greenbridge|hospital|buyer|pilot|grant/.test(lowerMessage)) {
+    tags.push("partner");
+  }
+
+  if (/thanks|good progress|promising|excited|likes the pilot|helpful|appreciate/.test(lowerMessage)) {
+    tags.push("warmth");
+  }
+
+  return tags;
+}
+
+function parseWhatsAppMessages(text: string): WhatsAppMessage[] {
+  return text
+    .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean);
-  const rows = lines.map((line, index) => {
-    const whatsappMatch = line.match(/^\[?[0-9/.,:\sAPMapm-]+\]?\s*([^:]{2,60}):\s*(.+)$/);
-    const simpleSpeakerMatch = line.match(/^([^:]{2,60}):\s*(.+)$/);
-    const speaker = (whatsappMatch?.[1] ?? simpleSpeakerMatch?.[1] ?? `Evidence line ${index + 1}`).trim();
-    const message = (whatsappMatch?.[2] ?? simpleSpeakerMatch?.[2] ?? line).trim();
-    const lowerMessage = message.toLowerCase();
+    .filter(Boolean)
+    .map((line, index) => {
+      const whatsappMatch = line.match(/^\[?([0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4},?\s+[0-9]{1,2}:[0-9]{2}(?:\s?[APMapm]{2})?)\]?\s*([^:]{2,80}):\s*(.+)$/);
+      const simpleSpeakerMatch = line.match(/^([^:]{2,80}):\s*(.+)$/);
+      const timestamp = whatsappMatch?.[1]?.trim() ?? "";
+      const speaker = (whatsappMatch?.[2] ?? simpleSpeakerMatch?.[1] ?? `Line ${index + 1}`).trim();
+      const body = (whatsappMatch?.[3] ?? simpleSpeakerMatch?.[2] ?? line).trim();
+      const startupId = detectStartupId(`${speaker} ${body}`);
+
+      return {
+        id: `whatsapp-line-${index + 1}`,
+        lineNumber: index + 1,
+        timestamp,
+        speaker,
+        body,
+        rawLine: line,
+        startupId,
+        tags: classifyWhatsAppTags(body),
+      };
+    });
+}
+
+function toEvidenceLines(messages: WhatsAppMessage[], preferredTags: WhatsAppTag[]) {
+  const preferred = messages.filter((message) => preferredTags.some((tag) => message.tags.includes(tag)));
+  const source = preferred.length >= 2 ? preferred : messages;
+
+  return source.slice(0, 3).map<EvidenceLine>((message) => ({
+    id: message.id,
+    lineNumber: message.lineNumber,
+    speaker: message.speaker,
+    text: message.body,
+    rawLine: message.rawLine,
+  }));
+}
+
+function buildInsightForStartup(startupId: string, messages: WhatsAppMessage[]): WhatsAppInsight {
+  const blockerCount = messages.filter((message) => message.tags.includes("blocker")).length;
+  const askCount = messages.filter((message) => message.tags.includes("ask")).length;
+  const followUpCount = messages.filter((message) => message.tags.includes("follow-up")).length;
+  const missingEvidenceCount = messages.filter((message) => message.tags.includes("missing-evidence")).length;
+  const partnerCueCount = messages.filter((message) => message.tags.includes("partner")).length;
+  const baseConfidence = Math.min(94, 58 + blockerCount * 6 + followUpCount * 5 + askCount * 4 + partnerCueCount * 3);
+
+  if (startupId === "startup-carbonloop") {
+    return {
+      startupId,
+      title: "Review pilot economics before the GreenBridge introduction",
+      summary: `The thread mentions the partner path ${partnerCueCount} time${partnerCueCount === 1 ? "" : "s"} and shows ${missingEvidenceCount} missing proof point${missingEvidenceCount === 1 ? "" : "s"}. Hold the introduction until the pilot economics are ready.`,
+      status: missingEvidenceCount > 0 ? "Manual evidence needed" : "Review suggested",
+      confidence: Math.min(88, baseConfidence),
+      reasons: [
+        "GreenBridge comes up in the same thread as the grant deadline.",
+        "The founder says cost-savings evidence is still missing.",
+        "The admin note says to wait before making the introduction.",
+      ],
+      primaryLabel: "Review pilot economics",
+      primaryDecision: "needs_evidence",
+      evidenceLines: toEvidenceLines(messages, ["partner", "missing-evidence", "blocker"]),
+    };
+  }
+
+  if (startupId === "startup-nora-health") {
+    return {
+      startupId,
+      title: "Ask Alicia to review Nora's one-pager before hospital outreach",
+      summary: `The thread shows ${blockerCount} clinical risk point${blockerCount === 1 ? "" : "s"} and ${followUpCount} planned follow-up${followUpCount === 1 ? "" : "s"}. Review the one-pager before any hospital introduction.`,
+      status: "Review suggested",
+      confidence: Math.min(84, baseConfidence),
+      reasons: [
+        "The one-pager uses language Alicia calls too absolute.",
+        "The founder asks whether the hospital introduction should still happen.",
+        "Alicia and the admin both say the review comes first.",
+      ],
+      primaryLabel: "Review advisor notes",
+      primaryDecision: "needs_evidence",
+      evidenceLines: toEvidenceLines(messages, ["blocker", "ask", "follow-up"]),
+    };
+  }
+
+  return {
+    startupId,
+    title: "Schedule Priya's follow-up with Atlas AI",
+    summary: `The thread shows ${blockerCount} procurement risk point${blockerCount === 1 ? "" : "s"} and ${followUpCount} planned follow-up${followUpCount === 1 ? "" : "s"}. Schedule the follow-up around security owner, data access, and rollout risk.`,
+    status: missingEvidenceCount > 0 ? "Review suggested" : "Auto-ready",
+    confidence: Math.min(91, baseConfidence),
+    reasons: [
+      "Atlas repeats the same security and procurement issue.",
+      "Priya gives a concrete follow-up plan.",
+      "The admin note shows the follow-up never made it onto the calendar.",
+    ],
+    primaryLabel: "Schedule follow-up",
+    primaryDecision: "approved",
+    evidenceLines: toEvidenceLines(messages, ["blocker", "follow-up", "missing-evidence"]),
+  };
+}
+
+function analyzeWhatsAppThread(text: string): WhatsAppAnalysis {
+  const messages = parseWhatsAppMessages(text);
+  const participants = new Set(messages.map((message) => message.speaker));
+  const validationIssues: string[] = [];
+  const insights = startupIds.reduce<Record<string, WhatsAppInsight>>((current, startupId) => {
+    const startupMessages = messages.filter((message) => message.startupId === startupId);
+
+    if (startupMessages.length === 0) {
+      validationIssues.push(`${startupBriefs[startupId].label} has no WhatsApp messages linked to it.`);
+      return current;
+    }
+
+    current[startupId] = buildInsightForStartup(startupId, startupMessages);
+    return current;
+  }, {});
+
+  if (messages.some((message) => !message.startupId)) {
+    validationIssues.push("Some WhatsApp messages need review because they were not linked to a company.");
+  }
+
+  return {
+    sourceLabel: "Demo WhatsApp thread",
+    messageCount: messages.length,
+    participantCount: participants.size,
+    blockerCount: messages.filter((message) => message.tags.includes("blocker")).length,
+    unresolvedAskCount: messages.filter((message) => message.tags.includes("ask")).length,
+    followUpCount: messages.filter((message) => message.tags.includes("follow-up")).length,
+    partnerCueCount: messages.filter((message) => message.tags.includes("partner")).length,
+    validationIssues,
+    messages,
+    insights,
+  };
+}
+
+function summarizeTextEvidence(filename: string, text: string): CsvEvidenceState {
+  const messages = parseWhatsAppMessages(text);
+  const rows = messages.map((message) => {
+    const lowerMessage = message.body.toLowerCase();
 
     return {
-      mentor_id: `participant-${normalizeParticipantId(speaker) || index}`,
-      startup_id: "uploaded-text-evidence",
-      mentor_name: speaker,
-      startup_name: "Uploaded evidence",
+      mentor_id: `participant-${normalizeParticipantId(message.speaker) || message.lineNumber}`,
+      startup_id: message.startupId ?? "uploaded-text-evidence",
+      mentor_name: message.speaker,
+      startup_name: message.startupId ? startupBriefs[message.startupId].label : "Uploaded evidence",
       hours_synced: "0",
-      milestones_completed: /(done|completed|drafted|sent|shared|finished|mapped|reviewed)/i.test(message) ? message : "",
-      blockers_identified: /(blocker|blocked|stuck|delay|risk|issue|concern|cannot|can't|waiting|unsure|not ready)/i.test(message)
-        ? message
+      milestones_completed: /(done|completed|drafted|sent|shared|finished|mapped|reviewed)/i.test(message.body) ? message.body : "",
+      blockers_identified: message.tags.includes("blocker")
+        ? message.body
         : "",
       founder_confidence_score: "",
       mentor_confidence_score: "",
-      whatsapp_chat_excerpt: message,
-      follow_ups: /(follow up|next step|send|share|intro|introduce|circle back|schedule|book|review)/i.test(message) ? message : "",
-      unresolved_asks: /\?|can you|could you|please|waiting for|need you to/i.test(message) ? message : "",
-      sentiment_warmth: /(thanks|thank you|great|helpful|excited|appreciate|good progress)/i.test(message)
+      whatsapp_chat_excerpt: message.body,
+      follow_ups: message.tags.includes("follow-up") ? message.body : "",
+      unresolved_asks: message.tags.includes("ask") ? message.body : "",
+      sentiment_warmth: message.tags.includes("warmth")
         ? "high"
         : /(ok|agree|promising|close|clear)/i.test(lowerMessage)
           ? "medium"
@@ -245,7 +454,7 @@ function summarizeTextEvidence(filename: string, text: string): CsvEvidenceState
   return {
     kind: "text",
     filename,
-    sourceLabel: "WhatsApp/TXT",
+    sourceLabel: "WhatsApp text",
     rowLabel: "messages",
     rowCount: rows.length,
     mentorCount: participants.size,
@@ -254,65 +463,7 @@ function summarizeTextEvidence(filename: string, text: string): CsvEvidenceState
     blockerCount: rows.filter((row) => row.blockers_identified).length,
     rows,
     preview: rows.slice(0, 3).map((row) => `${row.mentor_name}: ${row.whatsapp_chat_excerpt}`),
-  };
-}
-
-function processCsvEvidenceRows(csv: CsvEvidenceState): ProcessedCsvSummary {
-  const relationshipPairs = new Set(csv.rows.filter((row) => row.mentor_id && row.startup_id).map((row) => `${row.mentor_id}:${row.startup_id}`));
-  const participants = new Set(csv.rows.map((row) => row.mentor_name).filter(Boolean));
-  const confidenceScores = csv.rows
-    .flatMap((row) => [Number(row.founder_confidence_score), Number(row.mentor_confidence_score)])
-    .filter((score) => Number.isFinite(score));
-  const mentorScores = new Map<string, { name: string; total: number; count: number }>();
-
-  csv.rows.forEach((row) => {
-    const mentorId = row.mentor_id;
-    if (!mentorId) return;
-
-    const founderConfidence = Number(row.founder_confidence_score) || 0;
-    const mentorConfidence = Number(row.mentor_confidence_score) || 0;
-    const hoursSynced = Number(row.hours_synced) || 0;
-    const warmthScore = row.sentiment_warmth === "high" ? 6 : row.sentiment_warmth === "medium" ? 3 : 0;
-    const responsivenessScore = /(4 hours|same day)/i.test(row.mentor_responsiveness)
-      ? 6
-      : /(24 hours|1 day)/i.test(row.mentor_responsiveness)
-        ? 3
-        : 0;
-    const rowScore = ((founderConfidence + mentorConfidence) / 2) * 10 + Math.min(hoursSynced * 3, 16) + warmthScore + responsivenessScore;
-    const current = mentorScores.get(mentorId) ?? { name: row.mentor_name || mentorId, total: 0, count: 0 };
-
-    mentorScores.set(mentorId, {
-      ...current,
-      total: current.total + rowScore,
-      count: current.count + 1,
-    });
-  });
-
-  const rankedMentor = Array.from(mentorScores.values())
-    .map((mentor) => ({
-      name: mentor.name,
-      score: Math.min(100, Math.round(mentor.total / Math.max(mentor.count, 1))),
-    }))
-    .sort((first, second) => second.score - first.score)[0];
-  const warmMessages = csv.rows.filter((row) => row.sentiment_warmth === "high" || row.sentiment_warmth === "medium").length;
-  const averageConfidence = confidenceScores.length
-    ? Math.round((confidenceScores.reduce((sum, score) => sum + score, 0) / confidenceScores.length) * 10) / 10
-    : 0;
-
-  return {
-    rowLabel: csv.rowLabel,
-    rowCount: csv.rowCount,
-    relationshipLabel: csv.kind === "text" ? "Participants" : "Relationships",
-    relationshipDetail: csv.kind === "text" ? "speakers parsed" : "mentor-startup pairs",
-    relationshipCount: csv.kind === "text" ? participants.size : relationshipPairs.size,
-    blockerCount: csv.blockerCount,
-    unresolvedAskCount: csv.rows.filter((row) => row.unresolved_asks?.trim()).length,
-    partnerSignalCount: csv.rows.filter((row) => /partner|intro|grant|pilot|greenbridge/i.test(`${row.follow_ups} ${row.unresolved_asks} ${row.blockers_identified}`)).length,
-    confidenceValue: csv.kind === "text" ? `${warmMessages}` : `${averageConfidence}/10`,
-    confidenceDetail: csv.kind === "text" ? "warmth cues found" : "founder and mentor scores",
-    topActorLabel: csv.kind === "text" ? "Most active" : "Top mentor",
-    topMentorName: rankedMentor?.name ?? "No participants",
-    topMentorScore: rankedMentor?.score ?? 0,
+    rawText: text,
   };
 }
 
@@ -339,7 +490,7 @@ function getDefaultActionForContext(lensId: LensId, startupId: string) {
   return primaryAction ?? directAction ?? startupActions[0] ?? relationshipOsSnapshot.actions[0];
 }
 
-function StatusPill({ status }: { status: ActionStatus | "Approved" | "Evidence requested" }) {
+function StatusPill({ status }: { status: ActionStatus | "Approved" }) {
   return (
     <span className={cn("inline-flex items-center border px-2 py-1 text-[0.64rem] font-bold uppercase tracking-[0.1em]", statusClasses[status])}>
       {statusLabels[status]}
@@ -350,20 +501,28 @@ function StatusPill({ status }: { status: ActionStatus | "Approved" | "Evidence 
 function CompactMetricButton({
   label,
   value,
+  actionLabel,
   onClick,
 }: {
   label: string;
   value: string;
+  actionLabel: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      className="inline-flex items-center gap-1 border border-[#9d8f77] bg-[#f7f1e5] px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[#59675e] hover:bg-[#fbf4e7] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#17211c]"
+      className="grid min-h-12 min-w-[136px] gap-1 border border-[#17211c] bg-[#fffaf0] px-3 py-2 text-left text-[#17211c] hover:bg-[#fbf4e7] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#17211c]"
       onClick={onClick}
     >
-      <span className="text-[#17211c]">{value}</span>
-      {label}
+      <span className="flex items-center justify-between gap-2">
+        <span className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[#59675e]">{label}</span>
+        <span className="text-lg font-semibold leading-none">{value}</span>
+      </span>
+      <span className="inline-flex items-center gap-1 text-[0.68rem] font-bold uppercase tracking-[0.08em] text-[#17211c]">
+        {actionLabel}
+        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+      </span>
     </button>
   );
 }
@@ -470,8 +629,8 @@ function LensBar({
     },
     evidence: {
       title: "Evidence",
-      detail: "Why the model believes it",
-      metric: `${relationshipOsSnapshot.signals.length} signals`,
+      detail: "Evidence behind it",
+      metric: `${relationshipOsSnapshot.signals.length} points`,
     },
   };
 
@@ -483,25 +642,39 @@ function LensBar({
         const isActive = activeLens === lens.id;
         const copy = tabCopy[lens.id];
 
+        const content = (
+          <>
+            <IconComponent className="h-4 w-4" aria-hidden />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold leading-tight sm:text-base">{copy.title}</span>
+              <span className={cn("mt-1 hidden text-xs leading-5 sm:block", isActive ? "text-[#c7bba9]" : "text-[#d9cfbd]")}>{copy.detail}</span>
+            </span>
+            <span className={cn("hidden w-fit border px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.1em] sm:block", isActive ? "border-[#4d594f] text-[#c7bba9]" : "border-[#4d594f] text-[#c7bba9]")}>
+              {copy.metric}
+            </span>
+          </>
+        );
+
+        if (isActive) {
+          return (
+            <div
+              key={lens.id}
+              aria-current="page"
+              className="flex min-h-[58px] flex-col items-start justify-center gap-1 border border-[#4d594f] bg-[#24332b] px-2 py-2 text-left text-[#d9cfbd] sm:grid sm:min-h-[72px] sm:grid-cols-[20px_minmax(0,1fr)_auto] sm:items-center sm:gap-3 sm:px-3 sm:py-3"
+            >
+              {content}
+            </div>
+          );
+        }
+
         return (
           <button
             key={lens.id}
             type="button"
-            aria-current={isActive ? "page" : undefined}
-            className={cn(
-              "flex min-h-[58px] flex-col items-start justify-center gap-1 border px-2 py-2 text-left transition-colors sm:grid sm:min-h-[72px] sm:grid-cols-[20px_minmax(0,1fr)_auto] sm:items-center sm:gap-3 sm:px-3 sm:py-3",
-              isActive ? "border-[#fffaf0] bg-[#fffaf0] text-[#17211c]" : "border-[#4d594f] bg-[#17211c] text-[#e5decd] hover:bg-[#24332b]",
-            )}
+            className="flex min-h-[58px] flex-col items-start justify-center gap-1 border border-[#4d594f] bg-[#17211c] px-2 py-2 text-left text-[#e5decd] transition-colors hover:bg-[#24332b] sm:grid sm:min-h-[72px] sm:grid-cols-[20px_minmax(0,1fr)_auto] sm:items-center sm:gap-3 sm:px-3 sm:py-3"
             onClick={() => onSelectLens(lens.id)}
           >
-            <IconComponent className="h-4 w-4" aria-hidden />
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold leading-tight sm:text-base">{copy.title}</span>
-              <span className={cn("mt-1 hidden text-xs leading-5 sm:block", isActive ? "text-[#405047]" : "text-[#d9cfbd]")}>{copy.detail}</span>
-            </span>
-            <span className={cn("hidden w-fit border px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.1em] sm:block", isActive ? "border-[#9d8f77] text-[#59675e]" : "border-[#4d594f] text-[#c7bba9]")}>
-              {copy.metric}
-            </span>
+            {content}
           </button>
         );
       })}
@@ -521,39 +694,63 @@ function StartupSelector({
 
   return (
     <section id="relationship-os-company-picker" className="border border-[#17211c] bg-[#fffaf0]">
-      <div className="flex flex-col gap-1 border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-[0.64rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Company first</p>
-          <h2 className="mt-1 text-xl font-semibold leading-tight text-[#17211c]">Showing recommendations for {selectedStartup.label}</h2>
+          <p className="text-[0.64rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Company in focus</p>
+          <h2 className="mt-1 text-2xl font-semibold leading-tight text-[#17211c]">
+            {selectedStartup.label}: {selectedStartup.need}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-[#405047]">Switch company to update the recommendation, mentor fit, partner path, and evidence.</p>
         </div>
-        <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">{selectedStartup.need}</p>
+        <div className="flex flex-wrap gap-2">
+          <span className="border border-[#9d8f77] bg-[#fffaf0] px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[#59675e]">
+            {selectedStartup.stage}
+          </span>
+          <span className="border border-[#9d8f77] bg-[#fffaf0] px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[#59675e]">
+            Mentor: {selectedStartup.mentor}
+          </span>
+        </div>
       </div>
 
       <div className="grid gap-2 p-2 md:grid-cols-3">
         {startupIds.map((startupId) => {
           const startup = startupBriefs[startupId];
           const isSelected = selectedStartupId === startupId;
+          const className = cn(
+            "grid gap-2 border px-3 py-3 text-left transition-colors",
+            isSelected ? "border-[#9d8f77] bg-[#dce6d8] text-[#17211c]" : "border-[#cab99d] bg-[#fffaf0] text-[#17211c] hover:bg-[#fbf4e7]",
+          );
+          const content = (
+            <>
+              <span className="flex items-center justify-between gap-3">
+                <span className="text-base font-semibold leading-tight">{startup.label}</span>
+                <span className={cn("border px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.1em]", isSelected ? "border-[#b4c0b0] text-[#657064]" : "border-[#9d8f77] text-[#59675e]")}>
+                  {startup.stage}
+                </span>
+              </span>
+              <span className={cn("mt-1 inline-flex w-fit items-center gap-1 border px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.08em]", isSelected ? "border-[#b4c0b0] bg-[#dce6d8] text-[#657064]" : "border-[#17211c] text-[#17211c]")}>
+                {isSelected ? "Selected company" : "Select company"}
+                {!isSelected ? <ArrowRight className="h-3.5 w-3.5" aria-hidden /> : null}
+              </span>
+            </>
+          );
+
+          if (isSelected) {
+            return (
+              <article key={startupId} aria-current="true" className={className}>
+                {content}
+              </article>
+            );
+          }
 
           return (
             <button
               key={startupId}
               type="button"
-              className={cn(
-                "grid gap-2 border px-3 py-3 text-left transition-colors",
-                isSelected ? "border-[#17211c] bg-[#17211c] text-[#fffaf0]" : "border-[#cab99d] bg-[#fffaf0] text-[#17211c] hover:bg-[#fbf4e7]",
-              )}
+              className={className}
               onClick={() => onSelectStartup(startupId)}
             >
-              <span className="flex items-center justify-between gap-3">
-                <span className="text-base font-semibold leading-tight">{startup.label}</span>
-                <span className={cn("border px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.1em]", isSelected ? "border-[#d9cfbd] text-[#d9cfbd]" : "border-[#9d8f77] text-[#59675e]")}>
-                  {startup.stage}
-                </span>
-              </span>
-              <span className={cn("text-xs leading-5", isSelected ? "text-[#e5decd]" : "text-[#405047]")}>{startup.need}</span>
-              <span className={cn("text-[0.62rem] font-bold uppercase tracking-[0.1em]", isSelected ? "text-[#d9cfbd]" : "text-[#59675e]")}>
-                Mentor fit: {startup.mentor}
-              </span>
+              {content}
             </button>
           );
         })}
@@ -579,9 +776,9 @@ function ActionQueue({
     activeDecision === "approved"
       ? "Approved in this demo"
       : activeDecision === "needs_evidence"
-        ? "Evidence requested before approval"
+        ? "Marked for review before approval"
         : activeAction?.status === "Manual evidence needed"
-          ? "Request one more piece of evidence before approval"
+          ? "Review the missing proof point before approval"
           : `Approve: ${activeAction?.title ?? "Select the next action"}`;
 
   return (
@@ -604,18 +801,13 @@ function ActionQueue({
         {actions.map((action) => {
           const isActive = activeActionId === action.id;
           const decision = decisions[action.id];
-          const visibleStatus = decision === "approved" ? "Approved" : decision === "needs_evidence" ? "Evidence requested" : action.status;
-
-          return (
-            <button
-              key={action.id}
-              type="button"
-              className={cn(
-                "grid w-full gap-3 px-4 py-4 text-left transition-colors md:grid-cols-[minmax(0,1fr)_auto]",
-                isActive ? "bg-[#dce6d8]" : "bg-[#fffaf0] hover:bg-[#f7f1e5]",
-              )}
-              onClick={() => onSelectAction(action.id)}
-            >
+          const visibleStatus = decision === "approved" ? "Approved" : action.status;
+          const className = cn(
+            "grid w-full gap-3 px-4 py-4 text-left transition-colors md:grid-cols-[minmax(0,1fr)_auto]",
+            isActive ? "bg-[#dce6d8]" : "bg-[#fffaf0] hover:bg-[#f7f1e5]",
+          );
+          const content = (
+            <>
               <span className="min-w-0">
                 <span className="flex flex-wrap items-center gap-2">
                   <StatusPill status={visibleStatus} />
@@ -624,9 +816,36 @@ function ActionQueue({
                 <span className="mt-3 block text-base font-semibold leading-tight text-[#17211c]">{action.title}</span>
                 <span className="mt-2 block text-sm leading-6 text-[#405047]">{action.summary}</span>
               </span>
-              <span className="flex items-center justify-end text-[#405047]">
-                <ArrowRight className="h-4 w-4" aria-hidden />
+              <span className="flex items-center justify-end self-start text-[#405047]">
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 border px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.08em]",
+                    isActive ? "border-[#b4c0b0] bg-[#dce6d8] text-[#657064]" : "border-[#17211c] bg-[#fffaf0] text-[#17211c]",
+                  )}
+                >
+                  {isActive ? "Selected decision" : "Open decision"}
+                  {!isActive ? <ArrowRight className="h-3.5 w-3.5" aria-hidden /> : null}
+                </span>
               </span>
+            </>
+          );
+
+          if (isActive) {
+            return (
+              <article key={action.id} aria-current="true" className={className}>
+                {content}
+              </article>
+            );
+          }
+
+          return (
+            <button
+              key={action.id}
+              type="button"
+              className={className}
+              onClick={() => onSelectAction(action.id)}
+            >
+              {content}
             </button>
           );
         })}
@@ -640,22 +859,31 @@ function SelectedInsightPanel({
   selectedRelationship,
   decisions,
   onRecordDecision,
+  evidenceLines,
+  reasoning,
 }: {
   selectedAction: Action;
   selectedRelationship: Relationship | null;
   decisions: Record<string, Decision>;
   onRecordDecision: (actionId: string, decision: Decision) => void;
+  evidenceLines?: EvidenceLine[];
+  reasoning?: string;
 }) {
+  const [whatsAppEvidenceOpen, setWhatsAppEvidenceOpen] = useState(false);
   const selectedActors = selectedAction.actorIds.map(getActorById);
   const selectedSignals = selectedAction.signals
     .map((signalId) => relationshipOsSnapshot.signals.find((signal) => signal.id === signalId))
     .filter((signal): signal is Signal => Boolean(signal));
   const decision = decisions[selectedAction.id];
 
+  useEffect(() => {
+    setWhatsAppEvidenceOpen(false);
+  }, [selectedAction.id]);
+
   return (
     <section className="border border-[#17211c] bg-[#fffaf0]">
       <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
-        <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">AI rationale</p>
+        <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Reasoning</p>
         <h2 className="mt-1 text-2xl font-semibold leading-tight">{selectedAction.title}</h2>
       </div>
 
@@ -668,7 +896,7 @@ function SelectedInsightPanel({
           ))}
         </div>
 
-        <p className="text-base leading-7 text-[#263b2d]">{selectedAction.aiReasoning}</p>
+        <p className="text-base leading-7 text-[#263b2d]">{reasoning ?? selectedAction.aiReasoning}</p>
 
         {selectedRelationship ? (
           <div className="grid gap-3 sm:grid-cols-3">
@@ -680,7 +908,7 @@ function SelectedInsightPanel({
 
         {selectedRelationship ? (
           <div className="border border-[#cab99d] bg-[#fbf4e7] px-4 py-4">
-            <p className="text-[0.66rem] font-bold uppercase tracking-[0.14em] text-[#657064]">Blocker text</p>
+            <p className="text-[0.66rem] font-bold uppercase tracking-[0.14em] text-[#657064]">Open issue</p>
             <p className="mt-2 text-sm leading-6 text-[#405047]">{selectedRelationship.blockersIdentified}</p>
             <p className="mt-4 text-[0.66rem] font-bold uppercase tracking-[0.14em] text-[#657064]">Next step</p>
             <p className="mt-2 text-sm leading-6 text-[#17211c]">{selectedRelationship.nextStep}</p>
@@ -693,29 +921,52 @@ function SelectedInsightPanel({
           ))}
         </div>
 
+        {evidenceLines?.length ? (
+          <div className="border border-[#cab99d] bg-[#fbf4e7] px-4 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[0.66rem] font-bold uppercase tracking-[0.14em] text-[#657064]">WhatsApp evidence</p>
+                <p className="mt-1 text-sm leading-6 text-[#405047]">Source messages are available for judge review.</p>
+              </div>
+              <button
+                type="button"
+                className="inline-flex min-h-10 items-center justify-center gap-2 border border-[#17211c] bg-[#fffaf0] px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-[#17211c] hover:bg-[#17211c] hover:text-[#fffaf0]"
+                aria-expanded={whatsAppEvidenceOpen}
+                onClick={() => setWhatsAppEvidenceOpen((current) => !current)}
+              >
+                {whatsAppEvidenceOpen ? "Hide WhatsApp evidence" : "Show WhatsApp evidence"}
+                <ArrowRight className={cn("h-3.5 w-3.5 transition-transform", whatsAppEvidenceOpen ? "rotate-90" : "")} aria-hidden />
+              </button>
+            </div>
+
+            {whatsAppEvidenceOpen ? (
+              <div className="mt-3 space-y-2">
+                {evidenceLines.map((line) => (
+                  <p key={line.id} className="border border-[#cab99d] bg-[#fffaf0] px-3 py-2 text-xs leading-5 text-[#405047]">
+                    <span className="font-bold text-[#17211c]">Line {line.lineNumber}, {line.speaker}:</span> {line.text}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            className={cn(
-              "flex min-h-11 flex-1 items-center justify-center gap-2 border border-[#17211c] px-4 py-2 text-sm font-bold",
-              decision === "approved" ? "bg-[#17211c] text-[#fffaf0]" : "bg-[#fffaf0] text-[#17211c] hover:bg-[#17211c] hover:text-[#fffaf0]",
-            )}
-            onClick={() => onRecordDecision(selectedAction.id, "approved")}
-          >
-            <CheckCircle2 className="h-4 w-4" aria-hidden />
-            Approve next step
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "flex min-h-11 flex-1 items-center justify-center gap-2 border border-[#17211c] px-4 py-2 text-sm font-bold",
-              decision === "needs_evidence" ? "bg-[#934439] text-[#fffaf0]" : "bg-[#fffaf0] text-[#17211c] hover:bg-[#f4d8ce]",
-            )}
-            onClick={() => onRecordDecision(selectedAction.id, "needs_evidence")}
-          >
-            <Search className="h-4 w-4" aria-hidden />
-            Request evidence
-          </button>
+          {decision === "approved" ? (
+            <div className="flex min-h-11 flex-1 items-center justify-center gap-2 border border-[#b4c0b0] bg-[#dce6d8] px-4 py-2 text-sm font-bold text-[#657064]">
+              <CheckCircle2 className="h-4 w-4" aria-hidden />
+              Approved
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="flex min-h-11 flex-1 items-center justify-center gap-2 border border-[#17211c] bg-[#fffaf0] px-4 py-2 text-sm font-bold text-[#17211c] hover:bg-[#17211c] hover:text-[#fffaf0]"
+              onClick={() => onRecordDecision(selectedAction.id, "approved")}
+            >
+              <CheckCircle2 className="h-4 w-4" aria-hidden />
+              Approve next step
+            </button>
+          )}
         </div>
       </div>
     </section>
@@ -737,15 +988,88 @@ type RecommendationCopy = {
   eyebrow: string;
   title: string;
   summary: string;
-  status: ActionStatus | "Approved" | "Evidence requested";
+  status: ActionStatus | "Approved";
   confidence: number;
   reasons: string[];
   primaryLabel: string;
   primaryDecision: Decision;
   detailLabel: string;
+  evidenceLines?: EvidenceLine[];
+  extractionNote?: string;
+  supportingEvidence?: string;
 };
 
-function getRecommendationCopy(activeLens: LensId, action: Action, selectedStartupId: string): RecommendationCopy {
+function formatGoogleCalendarDate(date: Date) {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function getNextCalendarSlot() {
+  const start = new Date();
+  start.setDate(start.getDate() + 1);
+  start.setHours(10, 0, 0, 0);
+
+  if (start.getDay() === 0) {
+    start.setDate(start.getDate() + 1);
+  } else if (start.getDay() === 6) {
+    start.setDate(start.getDate() + 2);
+  }
+
+  const end = new Date(start);
+  end.setMinutes(start.getMinutes() + 30);
+
+  return `${formatGoogleCalendarDate(start)}/${formatGoogleCalendarDate(end)}`;
+}
+
+function waitForProcessingAnimation() {
+  return new Promise((resolve) => setTimeout(resolve, 900));
+}
+
+function buildGoogleCalendarUrl(recommendation: RecommendationCopy, evidenceLines: EvidenceLine[]) {
+  const details = [
+    recommendation.summary,
+    "",
+    "Why this matters:",
+    ...recommendation.reasons.map((reason) => `- ${reason}`),
+    "",
+    "Evidence lines:",
+    ...evidenceLines.map((line) => `Line ${line.lineNumber}, ${line.speaker}: ${line.text}`),
+    "",
+    recommendation.supportingEvidence ? `Supporting evidence: ${recommendation.supportingEvidence}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: recommendation.title,
+    details,
+    dates: getNextCalendarSlot(),
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function getRecommendationCopy(activeLens: LensId, action: Action, selectedStartupId: string, whatsAppAnalysis?: WhatsAppAnalysis | null): RecommendationCopy {
+  const whatsAppInsight = whatsAppAnalysis?.insights[selectedStartupId];
+
+  if (whatsAppInsight && (activeLens === "relationships" || activeLens === "partner-intros" || activeLens === "evidence")) {
+    return {
+      contextLabel: `For ${startupBriefs[selectedStartupId].label}`,
+      eyebrow: activeLens === "evidence" ? "WhatsApp evidence" : activeLens === "partner-intros" ? "Partner decision" : "Recommended next step",
+      title: whatsAppInsight.title,
+      summary: whatsAppInsight.summary,
+      status: whatsAppInsight.status,
+      confidence: whatsAppInsight.confidence,
+      reasons: whatsAppInsight.reasons,
+      primaryLabel: whatsAppInsight.primaryLabel,
+      primaryDecision: whatsAppInsight.primaryDecision,
+      detailLabel: "Open full drill-down",
+      evidenceLines: whatsAppInsight.evidenceLines,
+      extractionNote: `${whatsAppAnalysis.messageCount} WhatsApp messages read. ${whatsAppAnalysis.validationIssues.length} line${whatsAppAnalysis.validationIssues.length === 1 ? "" : "s"} need review.`,
+      supportingEvidence: "Cross-checked with monthly mentor check-ins, partner notes, and founder materials already in the evidence set.",
+    };
+  }
+
   if (selectedStartupId === "startup-carbonloop") {
     if (activeLens === "mentor-ranking") {
       return {
@@ -755,7 +1079,7 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
         summary: "CarbonLoop needs sharper grant framing and stronger finance evidence before the June deadline.",
         status: action.status,
         confidence: action.confidence,
-        reasons: ["The blocker is finance-specific.", "Farah matches climate grants and capital readiness.", "GreenBridge can validate the pilot once economics are ready."],
+        reasons: ["The issue is finance-specific.", "Farah matches climate grants and capital readiness.", "GreenBridge can validate the pilot once economics are ready."],
         primaryLabel: "Assign Farah",
         primaryDecision: "approved",
         detailLabel: "Show ranking details",
@@ -771,7 +1095,7 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
         status: action.status,
         confidence: action.confidence,
         reasons: ["GreenBridge fits the circular logistics pilot.", "Grant timing makes the introduction useful.", "Pilot economics are still missing."],
-        primaryLabel: "Request pilot economics",
+        primaryLabel: "Review pilot economics",
         primaryDecision: "needs_evidence",
         detailLabel: "Show partner rationale",
       };
@@ -780,13 +1104,13 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
     if (activeLens === "evidence") {
       return {
         contextLabel: "For CarbonLoop",
-        eyebrow: "Evidence readout",
+        eyebrow: "Evidence",
         title: "Mentor support is ready; partner approval needs more evidence",
-        summary: "The CSV shows urgency and finance need. The partner path still needs one stronger piece of evidence.",
+        summary: "The check-in shows urgency and finance need. The partner path still needs warehouse pilot economics.",
         status: "Review suggested",
         confidence: 82,
-        reasons: ["CSV sync confirms the grant deadline.", "Blocker text points to finance readiness.", "The partner introduction needs warehouse pilot economics."],
-        primaryLabel: "Review missing evidence",
+        reasons: ["The monthly sync confirms the grant deadline.", "The written issue points to finance readiness.", "The partner introduction needs warehouse pilot economics."],
+        primaryLabel: "Review pilot economics",
         primaryDecision: "needs_evidence",
         detailLabel: "Show evidence",
       };
@@ -799,7 +1123,7 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
       summary: "Pair CarbonLoop with Farah now, and use GreenBridge only after the pilot evidence is ready.",
       status: action.status,
       confidence: action.confidence,
-      reasons: ["The company has a near-term grant deadline.", "The blocker is specific enough to act on.", "Farah is the strongest mentor match."],
+      reasons: ["The company has a near-term grant deadline.", "The issue is specific enough to act on.", "Farah is the strongest mentor match."],
       primaryLabel: "Approve finance sprint",
       primaryDecision: "approved",
       detailLabel: "Show why",
@@ -815,7 +1139,7 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
         summary: "Nora needs clinical compliance judgment before the team sends new hospital introductions.",
         status: action.status,
         confidence: action.confidence,
-        reasons: ["The blocker is compliance language.", "Alicia is the best clinical product advisor.", "The next move should stay human-reviewed."],
+        reasons: ["The issue is compliance language.", "Alicia is the best clinical product advisor.", "The next move should stay human-reviewed."],
         primaryLabel: "Assign Alicia review",
         primaryDecision: "approved",
         detailLabel: "Show ranking details",
@@ -831,7 +1155,7 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
         status: "Manual evidence needed",
         confidence: 70,
         reasons: ["Clinical claims sound too absolute.", "Alicia should review the one-pager first.", "A premature introduction creates governance risk."],
-        primaryLabel: "Request review first",
+        primaryLabel: "Review clinical language",
         primaryDecision: "needs_evidence",
         detailLabel: "Show rationale",
       };
@@ -840,13 +1164,13 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
     if (activeLens === "evidence") {
       return {
         contextLabel: "For Nora Health",
-        eyebrow: "Evidence readout",
-        title: "Evidence supports advisor review before introductions",
-        summary: "The model is not saying Nora lacks fit; it is saying the next action should reduce compliance risk.",
+        eyebrow: "Evidence",
+        title: "Review the clinical claims before any introduction",
+        summary: "Nora may be a good partner fit later. Right now, the language needs clinical review first.",
         status: "Review suggested",
         confidence: 76,
-        reasons: ["WhatsApp/TXT evidence flags clinical language risk.", "The founder has hospital interest.", "The missing step is advisor review."],
-        primaryLabel: "Request advisor review",
+        reasons: ["The WhatsApp thread flags clinical language risk.", "The founder has hospital interest.", "The missing step is advisor review."],
+        primaryLabel: "Review advisor notes",
         primaryDecision: "needs_evidence",
         detailLabel: "Show evidence",
       };
@@ -859,7 +1183,7 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
       summary: "The safest useful action is to have Alicia review Nora's one-pager before any hospital introduction goes out.",
       status: action.status,
       confidence: action.confidence,
-      reasons: ["Nora has real buyer interest.", "Compliance language is the active blocker.", "Alicia is the correct expert for the risk."],
+      reasons: ["Nora has real buyer interest.", "Compliance language is the active issue.", "Alicia is the correct expert for the risk."],
       primaryLabel: "Approve review",
       primaryDecision: "approved",
       detailLabel: "Show why",
@@ -874,7 +1198,7 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
       summary: "Priya is the clearest mentor match because the need, fit, and timing all line up.",
       status: action.status,
       confidence: action.confidence,
-      reasons: ["Atlas has a concrete procurement blocker.", "Priya has the strongest enterprise GTM fit.", "Both sides show high confidence."],
+      reasons: ["Atlas has a concrete procurement issue.", "Priya has the strongest enterprise GTM fit.", "Founder and mentor ratings are both high."],
       primaryLabel: "Assign mentor",
       primaryDecision: "approved",
       detailLabel: "Show ranking details",
@@ -886,10 +1210,10 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
       contextLabel: "For Atlas AI",
       eyebrow: "Partner introduction",
       title: "Hold partner introductions for now",
-      summary: "Atlas needs mentor help on procurement before the team creates external partner motion.",
+      summary: "Atlas needs mentor help on procurement before the team makes partner introductions.",
       status: "Manual evidence needed",
       confidence: 67,
-      reasons: ["The active blocker is buyer risk, not partner access.", "Priya should sharpen the security narrative first.", "A partner introduction would be premature."],
+      reasons: ["The current issue is buyer risk, not partner access.", "Priya should sharpen the security narrative first.", "A partner introduction would be premature."],
       primaryLabel: "Hold partner introduction",
       primaryDecision: "needs_evidence",
       detailLabel: "Show partner rationale",
@@ -899,12 +1223,12 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
   if (activeLens === "evidence") {
     return {
       contextLabel: "For Atlas AI",
-      eyebrow: "Evidence readout",
+      eyebrow: "Evidence",
       title: "Evidence supports a follow-up between Priya and Atlas AI",
       summary: "The evidence points to one clear action: help Atlas explain procurement, security, and rollout risk.",
       status: action.status,
       confidence: action.confidence,
-      reasons: ["WhatsApp/TXT evidence repeats procurement delay.", "CSV confidence scores are high.", "The blocker maps directly to Priya's expertise."],
+      reasons: ["The WhatsApp thread repeats the procurement delay.", "Monthly ratings are high.", "The issue maps directly to Priya's expertise."],
       primaryLabel: "Approve mentor follow-up",
       primaryDecision: "approved",
       detailLabel: "Show evidence",
@@ -915,10 +1239,10 @@ function getRecommendationCopy(activeLens: LensId, action: Action, selectedStart
     contextLabel: "For Atlas AI",
     eyebrow: "Recommended next step",
     title: "Schedule a follow-up between Priya and Atlas AI",
-    summary: "This is the cleanest next move: the problem is specific, the mentor fit is strong, and the confidence is high.",
+    summary: "This is the cleanest next move: the problem is specific, the mentor fit is strong, and both sides rated the relationship highly.",
     status: action.status,
     confidence: action.confidence,
-    reasons: ["Atlas is stuck on procurement risk.", "Priya can help with enterprise buyer mapping.", "Founder and mentor confidence are both high."],
+    reasons: ["Atlas is stuck on procurement risk.", "Priya can help with enterprise buyer mapping.", "Founder and mentor ratings are both high."],
     primaryLabel: "Approve next step",
     primaryDecision: "approved",
     detailLabel: "Show why",
@@ -930,61 +1254,79 @@ function PrimaryRecommendationCard({
   decision,
   onPrimaryAction,
   onShowDetails,
+  calendarUrl,
 }: {
   recommendation: RecommendationCopy;
   decision: Decision | undefined;
   onPrimaryAction: () => void;
   onShowDetails: () => void;
+  calendarUrl?: string;
 }) {
-  const visibleStatus = decision === "approved" ? "Approved" : decision === "needs_evidence" ? "Evidence requested" : recommendation.status;
+  const visibleStatus = decision === "approved" ? "Approved" : recommendation.status;
+  const hasPrimaryAction = Boolean(calendarUrl) || recommendation.primaryDecision === "approved";
+  const primaryDecisionAlreadyRecorded = hasPrimaryAction && decision === recommendation.primaryDecision;
+  const primaryActionClassName = cn(
+    "flex min-h-11 items-center justify-center gap-2 border border-[#17211c] px-4 py-2 text-sm font-bold",
+    "bg-[#17211c] text-[#fffaf0] hover:bg-[#263b2d]",
+  );
+  const primaryActionStaticClassName =
+    "flex min-h-11 items-center justify-center gap-2 border border-[#b4c0b0] bg-[#dce6d8] px-4 py-2 text-sm font-bold text-[#657064]";
 
   return (
     <section className="border border-[#17211c] bg-[#fffaf0]">
-      <div className="grid gap-5 px-4 py-5 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusPill status={visibleStatus} />
-            <span className="border border-[#9d8f77] bg-[#fbf4e7] px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[#59675e]">
-              {recommendation.confidence}% confidence
-            </span>
-          </div>
-          <p className="mt-4 w-fit border border-[#9d8f77] bg-[#f7f1e5] px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[#59675e]">
+      <div className="px-4 py-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill status={visibleStatus} />
+          <span className="border border-[#9d8f77] bg-[#fbf4e7] px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[#59675e]">
+            {recommendation.confidence}% confidence
+          </span>
+          <span className="border border-[#9d8f77] bg-[#f7f1e5] px-2 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-[#59675e]">
             {recommendation.contextLabel}
-          </p>
-          <p className="mt-5 text-[0.66rem] font-bold uppercase tracking-[0.16em] text-[#657064]">{recommendation.eyebrow}</p>
-          <h2 className="mt-2 max-w-3xl text-3xl font-semibold leading-tight text-[#17211c] md:text-4xl">{recommendation.title}</h2>
-          <p className="mt-3 max-w-[68ch] text-base leading-7 text-[#405047]">{recommendation.summary}</p>
+          </span>
         </div>
-
-        <div className="border border-[#cab99d] bg-[#fbf4e7] px-4 py-4">
-          <p className="text-[0.64rem] font-bold uppercase tracking-[0.14em] text-[#657064]">Why this is the answer</p>
-          <ul className="mt-3 space-y-2">
-            {recommendation.reasons.map((reason) => (
-              <li key={reason} className="flex gap-2 text-sm leading-6 text-[#263b2d]">
-                <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-[#45624f]" aria-hidden />
-                <span>{reason}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <p className="mt-5 text-[0.66rem] font-bold uppercase tracking-[0.16em] text-[#657064]">{recommendation.eyebrow}</p>
+        <h2 className="mt-2 max-w-4xl text-3xl font-semibold leading-tight text-[#17211c] md:text-4xl">{recommendation.title}</h2>
+        <p className="mt-3 max-w-[70ch] text-base leading-7 text-[#405047]">{recommendation.summary}</p>
       </div>
 
-      <div className="grid gap-2 border-t border-[#cab99d] bg-[#f7f1e5] px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <div className={cn("grid gap-2 border-t border-[#cab99d] bg-[#f7f1e5] px-4 py-4", hasPrimaryAction ? "sm:grid-cols-[minmax(0,1fr)_auto]" : "")}>
+        {calendarUrl ? (
+          <a
+            className={primaryActionClassName}
+            href={calendarUrl}
+            target="_blank"
+            rel="noreferrer"
+            onClick={onPrimaryAction}
+            aria-label={`${recommendation.primaryLabel}, opens Google Calendar`}
+          >
+            <CheckCircle2 className="h-4 w-4" aria-hidden />
+            {recommendation.primaryLabel}
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </a>
+        ) : primaryDecisionAlreadyRecorded ? (
+          <div className={primaryActionStaticClassName}>
+            <CheckCircle2 className="h-4 w-4" aria-hidden />
+            Approved
+          </div>
+        ) : hasPrimaryAction ? (
+          <button
+            type="button"
+            className={primaryActionClassName}
+            onClick={onPrimaryAction}
+            aria-label={recommendation.primaryLabel}
+          >
+            <CheckCircle2 className="h-4 w-4" aria-hidden />
+            {recommendation.primaryLabel}
+          </button>
+        ) : null}
         <button
           type="button"
           className={cn(
-            "flex min-h-11 items-center justify-center gap-2 border border-[#17211c] px-4 py-2 text-sm font-bold",
-            recommendation.primaryDecision === "approved" ? "bg-[#17211c] text-[#fffaf0] hover:bg-[#263b2d]" : "bg-[#934439] text-[#fffaf0] hover:bg-[#743025]",
+            "flex min-h-11 items-center justify-center gap-2 border border-[#17211c] bg-[#fffaf0] px-4 py-2 text-sm font-bold text-[#17211c] hover:bg-[#fbf4e7]",
+            hasPrimaryAction ? "" : "w-full",
           )}
-          onClick={onPrimaryAction}
-        >
-          {recommendation.primaryDecision === "approved" ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : <Search className="h-4 w-4" aria-hidden />}
-          {recommendation.primaryLabel}
-        </button>
-        <button
-          type="button"
-          className="flex min-h-11 items-center justify-center gap-2 border border-[#17211c] bg-[#fffaf0] px-4 py-2 text-sm font-bold text-[#17211c] hover:bg-[#fbf4e7]"
           onClick={onShowDetails}
+          aria-label={`Open full drill-down for ${recommendation.title}`}
         >
           {recommendation.detailLabel}
           <ArrowRight className="h-4 w-4" aria-hidden />
@@ -1030,22 +1372,37 @@ function RankingsPanel({ rankings }: { rankings: MentorRanking[] }) {
   );
 }
 
-function SignalFeedPanel({ selectedSignals }: { selectedSignals: Signal[] }) {
+function SignalFeedPanel({ selectedSignals, whatsAppAnalysis }: { selectedSignals: Signal[]; whatsAppAnalysis: WhatsAppAnalysis | null }) {
+  const dynamicSignals: Signal[] = whatsAppAnalysis
+    ? startupIds.map((startupId) => {
+        const insight = whatsAppAnalysis.insights[startupId];
+        const startupMessages = whatsAppAnalysis.messages.filter((message) => message.startupId === startupId);
+
+        return {
+          id: `dynamic-${startupId}`,
+          sourceId: "whatsapp-export",
+          label: `${startupBriefs[startupId].label}: ${startupMessages.length} WhatsApp messages used`,
+          detail: insight?.summary ?? "No linked evidence found for this company.",
+          state: insight ? "Extracted" : "Needs review",
+        };
+      })
+    : relationshipOsSnapshot.signals;
+
   return (
     <section id="relationship-os-signals" tabIndex={-1} className="scroll-mt-4 border border-[#17211c] bg-[#fffaf0] focus:outline-none">
       <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
-        <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Signal feed</p>
-        <h2 className="mt-1 text-2xl font-semibold leading-tight">What the model reads</h2>
+        <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Evidence</p>
+        <h2 className="mt-1 text-2xl font-semibold leading-tight">Evidence used</h2>
       </div>
       <div className="border-b border-[#cab99d] px-4 py-4">
         <ActionCallout
           label="Insight"
-          title={selectedSignals[0]?.label ?? "Prioritize the highest-confidence evidence"}
-          detail="Each recommendation links back to CSV or WhatsApp/TXT evidence, so the operator can approve the action or request missing evidence with context."
+          title={whatsAppAnalysis ? "WhatsApp context recovered and cross-checked" : selectedSignals[0]?.label ?? "Use the strongest evidence first"}
+          detail="WhatsApp is a primary source because decisions often get buried there. The recommendation still checks against mentor check-ins, partner notes, and founder materials."
         />
       </div>
       <div className="divide-y divide-[#cab99d]">
-        {relationshipOsSnapshot.signals.map((signal) => (
+        {dynamicSignals.map((signal) => (
           <SignalRow key={signal.id} signal={signal} />
         ))}
       </div>
@@ -1053,115 +1410,78 @@ function SignalFeedPanel({ selectedSignals }: { selectedSignals: Signal[] }) {
   );
 }
 
-function ProcessedCsvStat({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return (
-    <div className="border border-[#cab99d] bg-[#fffaf0] px-3 py-3">
-      <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[#657064]">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-[#17211c]">{value}</p>
-      <p className="mt-1 text-xs leading-5 text-[#59675e]">{detail}</p>
-    </div>
-  );
-}
-
 function IngestionPanel({
-  queuedEvidenceSource,
-  evidenceProcessed,
   isProcessingEvidence,
-  processRunCount,
-  processedCsvSummary,
   processingError,
   csvEvidence,
   pastedEvidence,
-  onQueueEvidence,
   onChangePastedEvidence,
   onUploadCsv,
-  onLoadSampleCsv,
+  onLoadDemoWhatsApp,
   onProcessEvidence,
 }: {
-  queuedEvidenceSource: string | null;
-  evidenceProcessed: boolean;
   isProcessingEvidence: boolean;
-  processRunCount: number;
-  processedCsvSummary: ProcessedCsvSummary | null;
   processingError: string | null;
   csvEvidence: CsvEvidenceState | null;
   pastedEvidence: string;
-  onQueueEvidence: (sourceId: string) => void;
   onChangePastedEvidence: (value: string) => void;
   onUploadCsv: (file: File) => Promise<void>;
-  onLoadSampleCsv: () => void;
+  onLoadDemoWhatsApp: () => void;
   onProcessEvidence: () => Promise<void>;
 }) {
-  const queuedSource = relationshipOsSnapshot.evidenceSources.find((source) => source.id === queuedEvidenceSource);
+  const hasTextInput = pastedEvidence.trim().length > 0;
+  const hasUploadedEvidence = Boolean(csvEvidence && csvEvidence.filename !== "Demo WhatsApp thread");
+  const canProcess = hasTextInput || hasUploadedEvidence;
 
   return (
     <section className="border border-[#17211c] bg-[#fffaf0]">
       <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
-        <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Data setup</p>
-        <h2 className="mt-1 text-2xl font-semibold leading-tight">Process supported evidence</h2>
-        <p className="mt-2 max-w-[76ch] text-sm leading-6 text-[#405047]">
-          This demo processes CSV mentor syncs and WhatsApp/TXT exports. PDFs, decks, Google Sheets, Airtable, and Firestore stay out of the live demo until the backend credentials and extractors are connected.
+        <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Raw information</p>
+        <h2 className="mt-1 text-2xl font-semibold leading-tight">Add evidence for processing</h2>
+        <p className="mt-2 max-w-[70ch] text-sm leading-6 text-[#405047]">
+          Paste a note, WhatsApp excerpt, or follow-up. Submit it to refresh the recommendation and drill-down evidence.
         </p>
       </div>
 
-      <div className="grid gap-3 p-3 md:grid-cols-2">
-        {LIVE_EVIDENCE_SOURCE_IDS.map((sourceId) => {
-          const source = relationshipOsSnapshot.evidenceSources.find((candidate) => candidate.id === sourceId);
-
-          if (!source) return null;
-
-          return (
-            <button key={source.id} type="button" className="text-left" onClick={() => onQueueEvidence(source.id)}>
-              <SourceBadge source={source} />
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="border-t border-[#9d8f77] bg-[#fffaf0] px-4 py-4">
+      <div className="bg-[#fffaf0] px-4 py-4">
         <label htmlFor="relationship-os-paste" className="text-sm font-bold text-[#17211c]">
-          Paste WhatsApp/TXT evidence
+          Raw information input
         </label>
         <p className="mt-1 text-xs leading-5 text-[#405047]">
-          Paste a chat export, notes, or copied mentor feedback here, then press Process Raw Information.
+          This starts empty on purpose. Add any new evidence you want the demo to process.
         </p>
         <textarea
           id="relationship-os-paste"
-          className="mt-3 min-h-32 w-full resize-y border border-[#9d8f77] bg-[#fbf4e7] px-3 py-3 text-sm leading-6 text-[#17211c] outline-none placeholder:text-[#7d806e] focus:border-[#17211c]"
-          placeholder="Priya: Send me the security review notes and I will mark the buyer committee.&#10;Atlas Founder: We are stuck on security review but the GTM milestone is done."
+          className="mt-3 min-h-36 w-full resize-y border border-[#9d8f77] bg-[#fbf4e7] px-3 py-3 text-sm leading-6 text-[#17211c] outline-none placeholder:text-[#7d806e] focus:border-[#17211c]"
+          placeholder="Paste extra evidence here. Example: founder note, mentor feedback, WhatsApp excerpt, partner update, or admin decision."
           value={pastedEvidence}
           onChange={(event) => onChangePastedEvidence(event.currentTarget.value)}
         />
       </div>
 
-      <div className="grid gap-3 border-t border-[#9d8f77] bg-[#fbf4e7] px-4 py-4 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+      <div className="grid gap-3 border-t border-[#9d8f77] bg-[#fbf4e7] px-4 py-4 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
         <div className="min-w-0">
           <p className="text-sm font-bold text-[#17211c]">
-            {csvEvidence
-              ? `${csvEvidence.filename} loaded: ${csvEvidence.rowCount} ${csvEvidence.rowLabel} across ${csvEvidence.participantCount} participants.`
-              : pastedEvidence.trim()
-                ? "Pasted WhatsApp/TXT evidence is ready to process."
-              : "Upload CSV or WhatsApp/TXT evidence from your laptop, or load the sample CSV for the demo."}
+            {hasTextInput
+              ? "Text input is ready to process."
+              : hasUploadedEvidence
+                ? `${csvEvidence?.filename} is ready to process.`
+                : "Demo WhatsApp thread is already loaded. Add more evidence here when needed."}
           </p>
-          {csvEvidence ? (
-            <div className="mt-3 grid gap-2">
-              {csvEvidence.preview.map((line) => (
-                <p key={line} className="border border-[#cab99d] bg-[#fffaf0] px-3 py-2 text-xs leading-5 text-[#405047]">
-                  {line}
-                </p>
-              ))}
+          {isProcessingEvidence ? (
+            <div className="mt-3 flex items-center gap-3 border border-[#45624f] bg-[#fffaf0] px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-[#263b2d]" aria-live="polite">
+              <span className="flex gap-1" aria-hidden>
+                <span className="h-2 w-2 animate-pulse bg-[#263b2d]" />
+                <span className="h-2 w-2 animate-pulse bg-[#45624f] [animation-delay:120ms]" />
+                <span className="h-2 w-2 animate-pulse bg-[#6f7b69] [animation-delay:240ms]" />
+              </span>
+              Processing evidence
             </div>
           ) : null}
-          <a
-            className="mt-3 inline-flex border border-[#9d8f77] bg-[#fffaf0] px-2 py-1 text-[0.64rem] font-bold uppercase tracking-[0.1em] text-[#59675e] hover:border-[#17211c] hover:text-[#17211c]"
-            href={SAMPLE_WHATSAPP_CSV_PATH}
-          >
-            Open sample CSV
-          </a>
         </div>
-        <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 border border-[#17211c] bg-[#17211c] px-5 py-2 text-sm font-bold text-[#fffaf0] hover:bg-[#263b2d]">
+        <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 border border-[#17211c] bg-[#fffaf0] px-5 py-2 text-sm font-bold text-[#17211c] hover:bg-[#17211c] hover:text-[#fffaf0]">
           <Upload className="h-4 w-4" aria-hidden />
-          Upload Evidence
+          Upload file
           <input
             className="sr-only"
             type="file"
@@ -1181,83 +1501,56 @@ function IngestionPanel({
         <button
           type="button"
           className="flex min-h-11 items-center justify-center gap-2 border border-[#17211c] bg-[#fffaf0] px-5 py-2 text-sm font-bold text-[#17211c] hover:bg-[#17211c] hover:text-[#fffaf0]"
-          onClick={onLoadSampleCsv}
+          onClick={onLoadDemoWhatsApp}
         >
           <FileText className="h-4 w-4" aria-hidden />
-          Load sample CSV
+          Reload demo WhatsApp thread
         </button>
+        {canProcess || isProcessingEvidence ? (
+          <button
+            type="button"
+            className="flex min-h-11 items-center justify-center gap-2 border border-[#17211c] bg-[#17211c] px-5 py-2 text-sm font-bold text-[#fffaf0] hover:bg-[#263b2d]"
+            disabled={isProcessingEvidence}
+            onClick={onProcessEvidence}
+          >
+            {isProcessingEvidence ? <Activity className="h-4 w-4 animate-spin" aria-hidden /> : <Upload className="h-4 w-4" aria-hidden />}
+            {isProcessingEvidence ? "Processing" : "Submit raw information"}
+          </button>
+        ) : (
+          <div className="flex min-h-11 items-center justify-center border border-[#9d8f77] bg-[#d9cfbd] px-5 py-2 text-sm font-bold text-[#59675e]">
+            Add evidence to submit
+          </div>
+        )}
       </div>
 
-      <div className={cn("grid gap-3 border-t border-[#9d8f77] px-4 py-4 md:grid-cols-[minmax(0,1fr)_auto]", evidenceProcessed ? "bg-[#dce6d8]" : "bg-[#fbf4e7]")}>
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-[#17211c]" aria-live="polite">
-            {isProcessingEvidence
-              ? "Processing evidence into relationship signals..."
-              : evidenceProcessed
-              ? csvEvidence
-                ? `Run ${processRunCount}: ${csvEvidence.rowCount} ${csvEvidence.rowLabel} processed into relationship, mentor ranking, and partner introduction signals.`
-                : `Run ${processRunCount}: Raw information processed into relationship, mentor ranking, and partner introduction signals.`
-              : csvEvidence
-                ? `${csvEvidence.filename} is ready to process.`
-                : pastedEvidence.trim()
-                  ? "Pasted evidence is ready to process."
-                : queuedSource
-                ? `${queuedSource.title} queued for extraction.`
-                : "Queue a source or process the full demo packet."}
-          </p>
-          <p className="mt-1 text-xs leading-5 text-[#405047]">
-            Backend handoff: {relationshipOsFirebaseContract.functions.map((fn) => fn.name).join(", ")}
-          </p>
-          {evidenceProcessed ? (
-            <p className="mt-2 w-fit border border-[#45624f] bg-[#fffaf0] px-2 py-1 text-[0.64rem] font-bold uppercase tracking-[0.1em] text-[#263b2d]">
-              Dashboard snapshot refreshed
-            </p>
-          ) : null}
-          {processingError ? (
-            <p className="mt-2 border border-[#934439] bg-[#f4d8ce] px-3 py-2 text-xs font-bold text-[#743025]">
-              {processingError}
-            </p>
-          ) : null}
-          {processedCsvSummary ? (
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              <ProcessedCsvStat
-                label={processedCsvSummary.rowLabel}
-                value={`${processedCsvSummary.rowCount}`}
-                detail={csvEvidence?.filename === "Pasted WhatsApp/TXT evidence" ? "parsed from paste" : "parsed from file"}
-              />
-              <ProcessedCsvStat label={processedCsvSummary.relationshipLabel} value={`${processedCsvSummary.relationshipCount}`} detail={processedCsvSummary.relationshipDetail} />
-              <ProcessedCsvStat label="Blockers" value={`${processedCsvSummary.blockerCount}`} detail={`${processedCsvSummary.unresolvedAskCount} unresolved asks`} />
-              <ProcessedCsvStat label={processedCsvSummary.topActorLabel} value={processedCsvSummary.topMentorName} detail={`${processedCsvSummary.topMentorScore}% fit score`} />
-              <ProcessedCsvStat label="Partner signals" value={`${processedCsvSummary.partnerSignalCount}`} detail="introduction, grant, or pilot cues" />
-              <ProcessedCsvStat label={csvEvidence?.kind === "text" ? "Warmth cues" : "Avg confidence"} value={processedCsvSummary.confidenceValue} detail={processedCsvSummary.confidenceDetail} />
-            </div>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          className="flex min-h-11 items-center justify-center gap-2 border border-[#17211c] bg-[#17211c] px-5 py-2 text-sm font-bold text-[#fffaf0] hover:bg-[#263b2d]"
-          disabled={isProcessingEvidence}
-          onClick={onProcessEvidence}
-        >
-          <Upload className="h-4 w-4" aria-hidden />
-          {isProcessingEvidence ? "Processing Raw Information" : evidenceProcessed ? "Reprocess Raw Information" : "Process Raw Information"}
-        </button>
-      </div>
+      {processingError ? (
+        <p className="border-t border-[#9d8f77] bg-[#f4d8ce] px-4 py-3 text-xs font-bold text-[#743025]">
+          {processingError}
+        </p>
+      ) : null}
     </section>
   );
 }
 
+function createDemoWhatsAppState() {
+  const evidence = summarizeTextEvidence("Demo WhatsApp thread", DEMO_WHATSAPP_THREAD);
+  const analysis = analyzeWhatsAppThread(DEMO_WHATSAPP_THREAD);
+
+  return {
+    evidence,
+    analysis,
+  };
+}
+
 export default function RelationshipOSDemo() {
+  const initialDemo = useMemo(() => createDemoWhatsAppState(), []);
   const [selectedStartupId, setSelectedStartupId] = useState("startup-atlas-ai");
   const [activeLens, setActiveLens] = useState<LensId>("relationships");
   const [selectedActionId, setSelectedActionId] = useState("action-atlas-priya");
-  const [queuedEvidenceSource, setQueuedEvidenceSource] = useState<string | null>("whatsapp-export");
-  const [evidenceProcessed, setEvidenceProcessed] = useState(false);
   const [isProcessingEvidence, setIsProcessingEvidence] = useState(false);
-  const [processRunCount, setProcessRunCount] = useState(0);
-  const [processedCsvSummary, setProcessedCsvSummary] = useState<ProcessedCsvSummary | null>(null);
   const [processingError, setProcessingError] = useState<string | null>(null);
-  const [csvEvidence, setCsvEvidence] = useState<CsvEvidenceState | null>(null);
+  const [csvEvidence, setCsvEvidence] = useState<CsvEvidenceState | null>(initialDemo.evidence);
+  const [whatsAppAnalysis, setWhatsAppAnalysis] = useState<WhatsAppAnalysis | null>(initialDemo.analysis);
   const [pastedEvidence, setPastedEvidence] = useState("");
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
   const [expandedLens, setExpandedLens] = useState<LensId | null>(null);
@@ -1280,7 +1573,11 @@ export default function RelationshipOSDemo() {
   const selectedSignals = selectedAction.signals
     .map((signalId) => relationshipOsSnapshot.signals.find((signal) => signal.id === signalId))
     .filter((signal): signal is Signal => Boolean(signal));
-  const recommendation = getRecommendationCopy(activeLens, selectedAction, selectedStartupId);
+  const recommendation = getRecommendationCopy(activeLens, selectedAction, selectedStartupId, whatsAppAnalysis);
+  const calendarUrl =
+    recommendation.primaryLabel.toLowerCase().includes("schedule")
+      ? buildGoogleCalendarUrl(recommendation, recommendation.evidenceLines ?? [])
+      : undefined;
 
   function selectLens(lensId: LensId) {
     setActiveLens(lensId);
@@ -1342,47 +1639,23 @@ export default function RelationshipOSDemo() {
     setDecisions((current) => ({ ...current, [actionId]: decision }));
   }
 
-  function queueEvidence(sourceId: string) {
-    setQueuedEvidenceSource(sourceId);
-    setEvidenceProcessed(false);
-    setProcessRunCount(0);
-    setProcessedCsvSummary(null);
-    setProcessingError(null);
-  }
-
   function changePastedEvidence(value: string) {
     setPastedEvidence(value);
-    setEvidenceProcessed(false);
-    setProcessRunCount(0);
-    setProcessedCsvSummary(null);
     setProcessingError(null);
-
-    if (value.trim()) {
-      setCsvEvidence(null);
-      setQueuedEvidenceSource("whatsapp-export");
-    }
   }
 
-  async function readSampleCsv() {
-    const response = await fetch(SAMPLE_WHATSAPP_CSV_PATH);
-    if (!response.ok) {
-      throw new Error(`Could not load ${SAMPLE_WHATSAPP_CSV_PATH}`);
-    }
+  function revealDemoWhatsAppThread() {
+    const demoState = createDemoWhatsAppState();
 
-    const csvText = await response.text();
-
-    return summarizeCsvEvidence("relationship-os-whatsapp-sync.csv", csvText);
-  }
-
-  async function loadSampleCsv() {
-    const csvState = await readSampleCsv();
-    setCsvEvidence(csvState);
+    setCsvEvidence(demoState.evidence);
+    setWhatsAppAnalysis(demoState.analysis);
     setPastedEvidence("");
-    setQueuedEvidenceSource("csv-may-sync");
-    setEvidenceProcessed(false);
-    setProcessRunCount(0);
-    setProcessedCsvSummary(null);
     setProcessingError(null);
+    setRawInfoOpen(true);
+
+    window.setTimeout(() => {
+      document.getElementById("relationship-os-raw-info")?.scrollIntoView({ block: "start" });
+    }, 0);
   }
 
   async function uploadCsv(file: File) {
@@ -1393,7 +1666,7 @@ export default function RelationshipOSDemo() {
       const isText = file.name.toLowerCase().endsWith(".txt") || file.type === "text/plain";
 
       if (!isCsv && !isText) {
-        throw new Error("Upload CSV mentor syncs or WhatsApp/TXT exports for this demo.");
+        throw new Error("Upload a CSV mentor check-in or WhatsApp text export for this demo.");
       }
 
       const fileText = await file.text();
@@ -1405,12 +1678,8 @@ export default function RelationshipOSDemo() {
 
       setCsvEvidence(csvState);
       setPastedEvidence("");
-      setQueuedEvidenceSource(csvState.kind === "text" ? "whatsapp-export" : "csv-may-sync");
-      setEvidenceProcessed(false);
-      setProcessRunCount(0);
-      setProcessedCsvSummary(null);
     } catch (error) {
-      setProcessingError(error instanceof Error ? error.message : "CSV upload failed.");
+      setProcessingError(error instanceof Error ? error.message : "Evidence upload failed.");
     }
   }
 
@@ -1419,14 +1688,22 @@ export default function RelationshipOSDemo() {
     setProcessingError(null);
 
     try {
-      const csvState = csvEvidence ?? (pastedEvidence.trim() ? summarizeTextEvidence("Pasted WhatsApp/TXT evidence", pastedEvidence) : await readSampleCsv());
+      const rawText = pastedEvidence.trim();
+      const uploadedEvidence = csvEvidence && csvEvidence.filename !== "Demo WhatsApp thread" ? csvEvidence : null;
+
+      if (!rawText && !uploadedEvidence) {
+        throw new Error("Paste raw information or upload a file first.");
+      }
+
+      await waitForProcessingAnimation();
+
+      const csvState = rawText ? summarizeTextEvidence("Pasted raw information", rawText) : uploadedEvidence!;
+      const analysisText = csvState.rawText ?? (rawText || DEMO_WHATSAPP_THREAD);
+      const analysis = csvState.kind === "text" ? analyzeWhatsAppThread(analysisText) : null;
       setCsvEvidence(csvState);
-      setQueuedEvidenceSource(csvState.kind === "text" ? "whatsapp-export" : "csv-may-sync");
-      setProcessedCsvSummary(processCsvEvidenceRows(csvState));
-      setEvidenceProcessed(true);
-      setProcessRunCount((current) => current + 1);
+      setWhatsAppAnalysis(analysis);
     } catch (error) {
-      setProcessingError(error instanceof Error ? error.message : "CSV processing failed.");
+      setProcessingError(error instanceof Error ? error.message : "Evidence processing failed.");
     } finally {
       setIsProcessingEvidence(false);
     }
@@ -1438,7 +1715,7 @@ export default function RelationshipOSDemo() {
         <header className="grid gap-4 border border-[#17211c] bg-[#fffaf0] px-4 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="border border-[#17211c] bg-[#17211c] px-2 py-1 text-[0.64rem] font-bold uppercase tracking-[0.14em] text-[#fffaf0]">
+              <span className="border border-[#9d8f77] bg-[#f7f1e5] px-2 py-1 text-[0.64rem] font-bold uppercase tracking-[0.14em] text-[#59675e]">
                 Comparison route
               </span>
               <span className="border border-[#9d8f77] bg-[#f7f1e5] px-2 py-1 text-[0.64rem] font-bold uppercase tracking-[0.14em] text-[#59675e]">
@@ -1446,7 +1723,7 @@ export default function RelationshipOSDemo() {
               </span>
             </div>
             <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-[0.98] tracking-normal md:text-6xl">
-              Relationship OS for ecosystem operators
+              Relationship OS for program teams
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[#405047] md:text-base">
               Pick a company first, then see the recommended mentor, the next action, and the evidence behind it.
@@ -1456,16 +1733,19 @@ export default function RelationshipOSDemo() {
             <CompactMetricButton
               label="Companies"
               value={`${startupIds.length}`}
+              actionLabel="Choose company"
               onClick={() => jumpToHeaderMetric("companies")}
             />
             <CompactMetricButton
               label="Mentors"
               value={`${relationshipOsSnapshot.mentorRankings.length}`}
+              actionLabel="Open ranking"
               onClick={() => jumpToHeaderMetric("mentors")}
             />
             <CompactMetricButton
               label="Decisions"
               value={`${relationshipOsSnapshot.actions.length}`}
+              actionLabel="Review queue"
               onClick={() => jumpToHeaderMetric("decisions")}
             />
           </div>
@@ -1481,6 +1761,7 @@ export default function RelationshipOSDemo() {
             decision={decisions[selectedAction.id]}
             onPrimaryAction={() => recordDecision(selectedAction.id, recommendation.primaryDecision)}
             onShowDetails={showDetails}
+            calendarUrl={calendarUrl}
           />
 
           <details
@@ -1492,11 +1773,12 @@ export default function RelationshipOSDemo() {
             <summary className="cursor-pointer list-none border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4 marker:hidden">
               <span className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
                 <span>
-                  <span className="block text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Drill-down</span>
-                  <span className="mt-1 block text-2xl font-semibold leading-tight text-[#17211c]">Evidence and detail for this recommendation</span>
+                  <span className="block text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">On-demand detail</span>
+                  <span className="mt-1 block text-2xl font-semibold leading-tight text-[#17211c]">See the evidence, ranking, and decision history</span>
                 </span>
-                <span className="text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">
-                  {expandedLens === activeLens ? "Hide details" : "Show details"}
+                <span className="inline-flex w-fit items-center gap-1 border border-[#17211c] bg-[#fffaf0] px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-[#17211c]">
+                  {expandedLens === activeLens ? "Close drill-down" : "Open full drill-down"}
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                 </span>
               </span>
             </summary>
@@ -1509,6 +1791,8 @@ export default function RelationshipOSDemo() {
                   selectedRelationship={selectedRelationship}
                   decisions={decisions}
                   onRecordDecision={recordDecision}
+                  evidenceLines={recommendation.evidenceLines}
+                  reasoning={recommendation.summary}
                 />
               </div>
             ) : null}
@@ -1521,6 +1805,8 @@ export default function RelationshipOSDemo() {
                   selectedRelationship={selectedRelationship}
                   decisions={decisions}
                   onRecordDecision={recordDecision}
+                  evidenceLines={recommendation.evidenceLines}
+                  reasoning={recommendation.summary}
                 />
               </div>
             ) : null}
@@ -1533,17 +1819,19 @@ export default function RelationshipOSDemo() {
                   selectedRelationship={selectedRelationship}
                   decisions={decisions}
                   onRecordDecision={recordDecision}
+                  evidenceLines={recommendation.evidenceLines}
+                  reasoning={recommendation.summary}
                 />
               </div>
             ) : null}
 
             {activeLens === "evidence" ? (
               <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-                <SignalFeedPanel selectedSignals={selectedSignals} />
+                <SignalFeedPanel selectedSignals={selectedSignals} whatsAppAnalysis={whatsAppAnalysis} />
                 <section className="border border-[#17211c] bg-[#fffaf0]">
                   <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
                     <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Evidence sources</p>
-                    <h2 className="mt-1 text-2xl font-semibold leading-tight">What has been processed</h2>
+                    <h2 className="mt-1 text-2xl font-semibold leading-tight">What the recommendation checks</h2>
                   </div>
                   <div className="grid gap-3 p-3">
                     {relationshipOsSnapshot.evidenceSources.map((source) => (
@@ -1566,27 +1854,23 @@ export default function RelationshipOSDemo() {
             <span className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
               <span>
                 <span className="block text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Optional add-on</span>
-                <span className="mt-1 block text-2xl font-semibold leading-tight text-[#17211c]">Add raw information later</span>
+                <span className="mt-1 block text-2xl font-semibold leading-tight text-[#17211c]">Add or inspect raw information</span>
               </span>
-              <span className="text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">
-                {rawInfoOpen ? "Hide upload tools" : "Open CSV and paste tools"}
+              <span className="inline-flex w-fit items-center gap-1 border border-[#17211c] bg-[#fffaf0] px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-[#17211c]">
+                {rawInfoOpen ? "Hide raw information tools" : "Open raw information tools"}
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
               </span>
             </span>
           </summary>
           <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_360px]">
             <IngestionPanel
-              queuedEvidenceSource={queuedEvidenceSource}
-              evidenceProcessed={evidenceProcessed}
               isProcessingEvidence={isProcessingEvidence}
-              processRunCount={processRunCount}
-              processedCsvSummary={processedCsvSummary}
               processingError={processingError}
               csvEvidence={csvEvidence}
               pastedEvidence={pastedEvidence}
-              onQueueEvidence={queueEvidence}
               onChangePastedEvidence={changePastedEvidence}
               onUploadCsv={uploadCsv}
-              onLoadSampleCsv={loadSampleCsv}
+              onLoadDemoWhatsApp={revealDemoWhatsAppThread}
               onProcessEvidence={processEvidence}
             />
 
@@ -1610,9 +1894,9 @@ export default function RelationshipOSDemo() {
         </details>
 
         <footer className="flex flex-col gap-3 border border-[#17211c] bg-[#17211c] px-5 py-4 text-[#fffaf0] md:flex-row md:items-center md:justify-between">
-          <p className="text-sm font-semibold">Cohort Atlas, Relationship OS comparison surface</p>
+          <p className="text-sm font-semibold">Cohort Atlas, Relationship OS comparison view</p>
           <div className="flex flex-wrap gap-3 text-xs font-bold uppercase tracking-[0.1em] text-[#d9cfbd]">
-            <span className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" aria-hidden /> May 2026 packet</span>
+            <span className="inline-flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" aria-hidden /> May 2026 data</span>
             <span className="inline-flex items-center gap-1"><Globe2 className="h-3.5 w-3.5" aria-hidden /> Google-ready</span>
             <span className="inline-flex items-center gap-1"><UserCheck className="h-3.5 w-3.5" aria-hidden /> Human approval loop</span>
             <span className="inline-flex items-center gap-1"><Building2 className="h-3.5 w-3.5" aria-hidden /> Demo branch only</span>
