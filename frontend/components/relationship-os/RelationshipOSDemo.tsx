@@ -726,7 +726,9 @@ function IngestionPanel({
   processedCsvSummary,
   processingError,
   csvEvidence,
+  pastedEvidence,
   onQueueEvidence,
+  onChangePastedEvidence,
   onUploadCsv,
   onLoadSampleCsv,
   onProcessEvidence,
@@ -738,7 +740,9 @@ function IngestionPanel({
   processedCsvSummary: ProcessedCsvSummary | null;
   processingError: string | null;
   csvEvidence: CsvEvidenceState | null;
+  pastedEvidence: string;
   onQueueEvidence: (sourceId: string) => void;
+  onChangePastedEvidence: (value: string) => void;
   onUploadCsv: (file: File) => Promise<void>;
   onLoadSampleCsv: () => void;
   onProcessEvidence: () => Promise<void>;
@@ -769,11 +773,29 @@ function IngestionPanel({
         })}
       </div>
 
+      <div className="border-t border-[#9d8f77] bg-[#fffaf0] px-4 py-4">
+        <label htmlFor="relationship-os-paste" className="text-sm font-bold text-[#17211c]">
+          Paste WhatsApp/TXT evidence
+        </label>
+        <p className="mt-1 text-xs leading-5 text-[#405047]">
+          Paste a chat export, notes, or copied mentor feedback here, then press Process Raw Information.
+        </p>
+        <textarea
+          id="relationship-os-paste"
+          className="mt-3 min-h-32 w-full resize-y border border-[#9d8f77] bg-[#fbf4e7] px-3 py-3 text-sm leading-6 text-[#17211c] outline-none placeholder:text-[#7d806e] focus:border-[#17211c]"
+          placeholder="Priya: Send me the security review notes and I will mark the buyer committee.&#10;Atlas Founder: We are stuck on security review but the GTM milestone is done."
+          value={pastedEvidence}
+          onChange={(event) => onChangePastedEvidence(event.currentTarget.value)}
+        />
+      </div>
+
       <div className="grid gap-3 border-t border-[#9d8f77] bg-[#fbf4e7] px-4 py-4 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
         <div className="min-w-0">
           <p className="text-sm font-bold text-[#17211c]">
             {csvEvidence
               ? `${csvEvidence.filename} loaded: ${csvEvidence.rowCount} ${csvEvidence.rowLabel} across ${csvEvidence.participantCount} participants.`
+              : pastedEvidence.trim()
+                ? "Pasted WhatsApp/TXT evidence is ready to process."
               : "Upload CSV or WhatsApp/TXT evidence from your laptop, or load the sample CSV for the demo."}
           </p>
           {csvEvidence ? (
@@ -825,13 +847,15 @@ function IngestionPanel({
         <div className="min-w-0">
           <p className="text-sm font-bold text-[#17211c]" aria-live="polite">
             {isProcessingEvidence
-              ? "Processing the CSV rows into relationship evidence..."
+              ? "Processing evidence into relationship signals..."
               : evidenceProcessed
               ? csvEvidence
                 ? `Run ${processRunCount}: ${csvEvidence.rowCount} ${csvEvidence.rowLabel} processed into relationship, mentor ranking, and partner intro signals.`
                 : `Run ${processRunCount}: Raw information processed into relationship, mentor ranking, and partner intro signals.`
               : csvEvidence
                 ? `${csvEvidence.filename} is ready to process.`
+                : pastedEvidence.trim()
+                  ? "Pasted evidence is ready to process."
                 : queuedSource
                 ? `${queuedSource.title} queued for extraction.`
                 : "Queue a source or process the full demo packet."}
@@ -851,7 +875,11 @@ function IngestionPanel({
           ) : null}
           {processedCsvSummary ? (
             <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              <ProcessedCsvStat label={processedCsvSummary.rowLabel} value={`${processedCsvSummary.rowCount}`} detail="parsed from file" />
+              <ProcessedCsvStat
+                label={processedCsvSummary.rowLabel}
+                value={`${processedCsvSummary.rowCount}`}
+                detail={csvEvidence?.filename === "Pasted WhatsApp/TXT evidence" ? "parsed from paste" : "parsed from file"}
+              />
               <ProcessedCsvStat label={processedCsvSummary.relationshipLabel} value={`${processedCsvSummary.relationshipCount}`} detail={processedCsvSummary.relationshipDetail} />
               <ProcessedCsvStat label="Blockers" value={`${processedCsvSummary.blockerCount}`} detail={`${processedCsvSummary.unresolvedAskCount} unresolved asks`} />
               <ProcessedCsvStat label={processedCsvSummary.topActorLabel} value={processedCsvSummary.topMentorName} detail={`${processedCsvSummary.topMentorScore}% fit score`} />
@@ -867,7 +895,7 @@ function IngestionPanel({
           onClick={onProcessEvidence}
         >
           <Upload className="h-4 w-4" aria-hidden />
-          {isProcessingEvidence ? "Processing CSV" : evidenceProcessed ? "Reprocess Raw Information" : "Process Raw Information"}
+          {isProcessingEvidence ? "Processing Evidence" : evidenceProcessed ? "Reprocess Raw Information" : "Process Raw Information"}
         </button>
       </div>
     </section>
@@ -884,6 +912,7 @@ export default function RelationshipOSDemo() {
   const [processedCsvSummary, setProcessedCsvSummary] = useState<ProcessedCsvSummary | null>(null);
   const [processingError, setProcessingError] = useState<string | null>(null);
   const [csvEvidence, setCsvEvidence] = useState<CsvEvidenceState | null>(null);
+  const [pastedEvidence, setPastedEvidence] = useState("");
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
 
   const visibleActions = useMemo(() => {
@@ -920,6 +949,19 @@ export default function RelationshipOSDemo() {
     setProcessingError(null);
   }
 
+  function changePastedEvidence(value: string) {
+    setPastedEvidence(value);
+    setEvidenceProcessed(false);
+    setProcessRunCount(0);
+    setProcessedCsvSummary(null);
+    setProcessingError(null);
+
+    if (value.trim()) {
+      setCsvEvidence(null);
+      setQueuedEvidenceSource("whatsapp-export");
+    }
+  }
+
   async function readSampleCsv() {
     const response = await fetch(SAMPLE_WHATSAPP_CSV_PATH);
     if (!response.ok) {
@@ -934,6 +976,7 @@ export default function RelationshipOSDemo() {
   async function loadSampleCsv() {
     const csvState = await readSampleCsv();
     setCsvEvidence(csvState);
+    setPastedEvidence("");
     setQueuedEvidenceSource("csv-may-sync");
     setEvidenceProcessed(false);
     setProcessRunCount(0);
@@ -956,11 +999,12 @@ export default function RelationshipOSDemo() {
       const csvState = isCsv ? summarizeCsvEvidence(file.name, fileText) : summarizeTextEvidence(file.name, fileText);
 
       if (csvState.rowCount === 0) {
-        throw new Error("That CSV did not contain any data rows.");
+        throw new Error("That evidence file did not contain any usable rows or messages.");
       }
 
       setCsvEvidence(csvState);
-      setQueuedEvidenceSource("csv-may-sync");
+      setPastedEvidence("");
+      setQueuedEvidenceSource(csvState.kind === "text" ? "whatsapp-export" : "csv-may-sync");
       setEvidenceProcessed(false);
       setProcessRunCount(0);
       setProcessedCsvSummary(null);
@@ -974,9 +1018,9 @@ export default function RelationshipOSDemo() {
     setProcessingError(null);
 
     try {
-      const csvState = csvEvidence ?? (await readSampleCsv());
+      const csvState = csvEvidence ?? (pastedEvidence.trim() ? summarizeTextEvidence("Pasted WhatsApp/TXT evidence", pastedEvidence) : await readSampleCsv());
       setCsvEvidence(csvState);
-      setQueuedEvidenceSource("csv-may-sync");
+      setQueuedEvidenceSource(csvState.kind === "text" ? "whatsapp-export" : "csv-may-sync");
       setProcessedCsvSummary(processCsvEvidenceRows(csvState));
       setEvidenceProcessed(true);
       setProcessRunCount((current) => current + 1);
@@ -1068,7 +1112,9 @@ export default function RelationshipOSDemo() {
             processedCsvSummary={processedCsvSummary}
             processingError={processingError}
             csvEvidence={csvEvidence}
+            pastedEvidence={pastedEvidence}
             onQueueEvidence={queueEvidence}
+            onChangePastedEvidence={changePastedEvidence}
             onUploadCsv={uploadCsv}
             onLoadSampleCsv={loadSampleCsv}
             onProcessEvidence={processEvidence}
