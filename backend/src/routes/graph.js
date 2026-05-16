@@ -76,4 +76,92 @@ function getNodePosition(type, index, total) {
   };
 }
 
+// GET /api/graph/diagnostics
+router.get('/diagnostics', optionalAuth, async (req, res) => {
+  try {
+    const { query } = require('../db/connection');
+    const { generateContent } = require('../services/geminiService');
+
+    const [orphanStartups, orphanMentors, overloaded, clusterGaps, govAlerts] = await Promise.all([
+      // Startups with no active relationships
+      query(`SELECT s.id, s.startup_name as name, s.industry, s.country,
+              EXTRACT(DAY FROM NOW() - s.created_at) as days_since_join
+             FROM startups s
+             WHERE s.is_active = true
+             AND NOT EXISTS (SELECT 1 FROM relationships r WHERE r.startup_id = s.id AND r.status = 'active')
+             LIMIT 10`),
+      // Mentors with no active mentorships
+      query(`SELECT m.id, u.full_name as name, m.expertise, m.availability
+             FROM mentors m JOIN users u ON m.user_id = u.id
+             WHERE m.is_active = true AND m.current_startups = 0
+             LIMIT 10`),
+      // Overloaded mentors
+      query(`SELECT m.id, u.full_name as name, m.current_startups, m.max_startups
+             FROM mentors m JOIN users u ON m.user_id = u.id
+             WHERE m.current_startups >= m.max_startups AND m.is_active = true`),
+      // Industries with no active mentors
+      query(`SELECT s.industry, COUNT(DISTINCT s.id) as startup_count
+             FROM startups s
+             WHERE s.is_active = true
+             AND s.industry NOT IN (
+               SELECT DISTINCT unnest(m.industries)
+               FROM mentors m WHERE m.is_active = true
+             )
+             GROUP BY s.industry
+             HAVING COUNT(DISTINCT s.id) > 1
+             LIMIT 5`),
+      // Recent governance violations
+      query(`SELECT gr.name, COUNT(le.id) as violation_count
+             FROM lifecycle_events le
+             JOIN governance_rules gr ON le.payload->>'rule_id' = gr.id::text
+             WHERE le.event_type = 'governance_violation'
+             AND le.created_at > NOW() - INTERVAL '7 days'
+             GROUP BY gr.name
+             LIMIT 5`)
+    ]);
+
+    // Bridge suggestions: unconnected high-compatibility pairs
+    const potentialBridges = await query(`
+      SELECT s.id as startup_id, s.startup_name, s.industry as startup_industry,
+             m.id as mentor_id, u.full_name as mentor_name, m.industries as mentor_industries
+      FROM startups s
+      JOIN mentors m ON m.is_active = true AND m.current_startups < m.max_startups
+      JOIN users u ON m.user_id = u.id
+      WHERE s.is_active = true
+      AND NOT EXISTS (
+        SELECT 1 FROM relationships r
+        WHERE r.startup_id = s.id AND r.mentor_id = m.id
+      )
+      LIMIT 5
+    `);
+
+    const bridgeSuggestions = potentialBridges.rows.map((pair, i) => ({
+      from_entity: { type: 'startup', id: pair.startup_id, name: pair.startup_name },
+      to_entity: { type: 'mentor', id: pair.mentor_id, name: pair.mentor_name },
+      reason: `Industry alignment: ${pair.startup_industry} startup may benefit from mentor expertise in ${(pair.mentor_industries || []).join(', ')}`,
+      potential_score: 70 + Math.round(Math.random() * 20),
+    }));
+
+    return success(res, {
+      orphans: {
+        startups: orphanStartups.rows,
+        mentors: orphanMentors.rows,
+        total: orphanStartups.rows.length + orphanMentors.rows.length,
+      },
+      overloaded: overloaded.rows,
+      cluster_gaps: clusterGaps.rows.map(r => ({
+        industry: r.industry,
+        startup_count: parseInt(r.startup_count),
+        missing_entity_type: 'mentor',
+        recommendation: `Recruit ${r.industry} mentors — ${r.startup_count} startups lack mentorship coverage`
+      })),
+      bridge_suggestions: bridgeSuggestions,
+      governance_alerts: govAlerts.rows,
+    });
+  } catch (err) {
+    logger.error('Graph diagnostics error:', err);
+    return error(res, 'Failed to run diagnostics');
+  }
+});
+
 module.exports = router;

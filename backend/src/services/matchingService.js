@@ -22,9 +22,29 @@ async function matchMentorsForStartup(startupId, limit = 5) {
     const mentors = mentorsResult.rows;
     if (mentors.length === 0) return [];
 
+    // Build outcome feedback context for each mentor
+    const outcomeContextMap = {};
+    await Promise.all(mentors.map(async (mentor) => {
+      try {
+        const res = await query(
+          `SELECT AVG(ro.overall_rating) as avg_rating, COUNT(*) as total,
+                  AVG(ro.funding_raised_after) as avg_funding
+           FROM relationship_outcomes ro
+           JOIN relationships r ON ro.relationship_id = r.id
+           JOIN startups s ON ro.startup_id = s.id
+           WHERE r.mentor_id = $1 AND s.industry = $2`,
+          [mentor.id, startup.industry]
+        );
+        if (res.rows[0]?.avg_rating) {
+          outcomeContextMap[mentor.id] = `Historical: avg ${parseFloat(res.rows[0].avg_rating).toFixed(1)}/5 rating across ${res.rows[0].total} past mentorships in ${startup.industry}`;
+        }
+      } catch (_) {}
+    }));
+
     const matchPromises = mentors.map(async (mentor) => {
       try {
-        const prompt = buildMentorMatchPrompt(startup, mentor);
+        const historicalNote = outcomeContextMap[mentor.id] || '';
+        const prompt = buildMentorMatchPrompt(startup, mentor, historicalNote);
         const aiResult = await generateContent(prompt, {
           mockType: 'mentor_match',
           temperature: 0.3

@@ -9,7 +9,13 @@ async function migrate() {
     console.log('Running database migrations...');
     const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
     await client.query(schema);
-    console.log('✅ Schema migration completed successfully');
+    console.log('✅ Base schema migration completed');
+
+    const extensions = fs.readFileSync(path.join(__dirname, 'schema_extensions.sql'), 'utf8');
+    await client.query(extensions);
+    console.log('✅ Schema extensions migration completed');
+
+    console.log('✅ All migrations completed successfully');
   } catch (error) {
     console.error('❌ Migration failed:', error.message);
     throw error;

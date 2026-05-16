@@ -4,18 +4,18 @@
 -- ============================================================
 -- SEED USERS
 -- ============================================================
--- Password for all seed users: "Password123!" (bcrypt hashed)
+-- Password for all seed users: "Password123!" (bcrypt hashed with bcryptjs)
 INSERT INTO users (id, full_name, email, password_hash, role, country) VALUES
-  ('a0000000-0000-0000-0000-000000000001', 'Admin User', 'admin@ecosystemos.ai', '$2b$10$rQZ9uAVn8MqKjZ5Yx3mHOeN1vL2kP4sT6wX8yA0bC3dE5fG7hI9j', 'admin', 'Kenya'),
-  ('a0000000-0000-0000-0000-000000000002', 'Sarah Kimani', 'sarah@techstartup.co.ke', '$2b$10$rQZ9uAVn8MqKjZ5Yx3mHOeN1vL2kP4sT6wX8yA0bC3dE5fG7hI9j', 'startup', 'Kenya'),
-  ('a0000000-0000-0000-0000-000000000003', 'James Okonkwo', 'james@agritech.ng', '$2b$10$rQZ9uAVn8MqKjZ5Yx3mHOeN1vL2kP4sT6wX8yA0bC3dE5fG7hI9j', 'startup', 'Nigeria'),
-  ('a0000000-0000-0000-0000-000000000004', 'Amara Diallo', 'amara@fintech.sn', '$2b$10$rQZ9uAVn8MqKjZ5Yx3mHOeN1vL2kP4sT6wX8yA0bC3dE5fG7hI9j', 'startup', 'Senegal'),
-  ('a0000000-0000-0000-0000-000000000005', 'Dr. Michael Chen', 'mchen@mentor.com', '$2b$10$rQZ9uAVn8MqKjZ5Yx3mHOeN1vL2kP4sT6wX8yA0bC3dE5fG7hI9j', 'mentor', 'Singapore'),
-  ('a0000000-0000-0000-0000-000000000006', 'Priya Sharma', 'priya@mentor.in', '$2b$10$rQZ9uAVn8MqKjZ5Yx3mHOeN1vL2kP4sT6wX8yA0bC3dE5fG7hI9j', 'mentor', 'India'),
-  ('a0000000-0000-0000-0000-000000000007', 'David Osei', 'david@mentor.gh', '$2b$10$rQZ9uAVn8MqKjZ5Yx3mHOeN1vL2kP4sT6wX8yA0bC3dE5fG7hI9j', 'mentor', 'Ghana'),
-  ('a0000000-0000-0000-0000-000000000008', 'Victoria Fund', 'victoria@vcfund.com', '$2b$10$rQZ9uAVn8MqKjZ5Yx3mHOeN1vL2kP4sT6wX8yA0bC3dE5fG7hI9j', 'investor', 'USA'),
-  ('a0000000-0000-0000-0000-000000000009', 'Kwame Mensah', 'kwame@healthtech.gh', '$2b$10$rQZ9uAVn8MqKjZ5Yx3mHOeN1vL2kP4sT6wX8yA0bC3dE5fG7hI9j', 'startup', 'Ghana'),
-  ('a0000000-0000-0000-0000-000000000010', 'Fatima Al-Hassan', 'fatima@edtech.eg', '$2b$10$rQZ9uAVn8MqKjZ5Yx3mHOeN1vL2kP4sT6wX8yA0bC3dE5fG7hI9j', 'startup', 'Egypt')
+  ('a0000000-0000-0000-0000-000000000001', 'Admin User', 'admin@ecosystemos.ai', '$2a$10$pYUwBfgpyWQ10sB0Y7UGt.hkrna4oex0vdKO7QqG21BOmJrG2kcay', 'admin', 'Kenya'),
+  ('a0000000-0000-0000-0000-000000000002', 'Sarah Kimani', 'sarah@techstartup.co.ke', '$2a$10$pYUwBfgpyWQ10sB0Y7UGt.hkrna4oex0vdKO7QqG21BOmJrG2kcay', 'startup', 'Kenya'),
+  ('a0000000-0000-0000-0000-000000000003', 'James Okonkwo', 'james@agritech.ng', '$2a$10$pYUwBfgpyWQ10sB0Y7UGt.hkrna4oex0vdKO7QqG21BOmJrG2kcay', 'startup', 'Nigeria'),
+  ('a0000000-0000-0000-0000-000000000004', 'Amara Diallo', 'amara@fintech.sn', '$2a$10$pYUwBfgpyWQ10sB0Y7UGt.hkrna4oex0vdKO7QqG21BOmJrG2kcay', 'startup', 'Senegal'),
+  ('a0000000-0000-0000-0000-000000000005', 'Dr. Michael Chen', 'mchen@mentor.com', '$2a$10$pYUwBfgpyWQ10sB0Y7UGt.hkrna4oex0vdKO7QqG21BOmJrG2kcay', 'mentor', 'Singapore'),
+  ('a0000000-0000-0000-0000-000000000006', 'Priya Sharma', 'priya@mentor.in', '$2a$10$pYUwBfgpyWQ10sB0Y7UGt.hkrna4oex0vdKO7QqG21BOmJrG2kcay', 'mentor', 'India'),
+  ('a0000000-0000-0000-0000-000000000007', 'David Osei', 'david@mentor.gh', '$2a$10$pYUwBfgpyWQ10sB0Y7UGt.hkrna4oex0vdKO7QqG21BOmJrG2kcay', 'mentor', 'Ghana'),
+  ('a0000000-0000-0000-0000-000000000008', 'Victoria Fund', 'victoria@vcfund.com', '$2a$10$pYUwBfgpyWQ10sB0Y7UGt.hkrna4oex0vdKO7QqG21BOmJrG2kcay', 'investor', 'USA'),
+  ('a0000000-0000-0000-0000-000000000009', 'Kwame Mensah', 'kwame@healthtech.gh', '$2a$10$pYUwBfgpyWQ10sB0Y7UGt.hkrna4oex0vdKO7QqG21BOmJrG2kcay', 'startup', 'Ghana'),
+  ('a0000000-0000-0000-0000-000000000010', 'Fatima Al-Hassan', 'fatima@edtech.eg', '$2a$10$pYUwBfgpyWQ10sB0Y7UGt.hkrna4oex0vdKO7QqG21BOmJrG2kcay', 'startup', 'Egypt')
 ON CONFLICT (email) DO NOTHING;
 
 -- ============================================================

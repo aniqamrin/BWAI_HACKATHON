@@ -107,6 +107,37 @@ function getMockResponse(type) {
         'Establish investor relations programme'
       ]
     },
+    outcome_analysis: {
+      success_classification: 'high',
+      key_success_factors: ['Strong mentor-startup alignment', 'Consistent milestone completion', 'Clear goal setting'],
+      learning_points: ['Early check-ins accelerate progress', 'Shared industry background improves outcomes'],
+      pattern_tags: ['high-growth', 'mentor-led', 'funded'],
+      ai_summary: 'This relationship demonstrated strong outcomes driven by aligned goals and consistent engagement. The mentor\'s industry expertise directly contributed to measurable startup progress. Key learnings include the value of structured milestone tracking.'
+    },
+    outcome_insights: {
+      headline: 'Mentorship relationships in FinTech show 40% higher success rates than other sectors',
+      key_insights: [
+        'Mentorships with blueprint-defined milestones complete 65% more goals on time',
+        'Startups with verification score above 70 have 2x higher programme graduation rates',
+        'Relationships with weekly check-ins show 3x better engagement health',
+        'West Africa cohorts show fastest traction growth post-mentorship'
+      ],
+      patterns: ['High-frequency engagement correlates with funding success', 'Geographic proximity improves NPS scores'],
+      recommendations: ['Prioritize blueprint-based relationships', 'Expand FinTech mentor pool by 40%']
+    },
+    blueprint_health: {
+      effectiveness_score: 78,
+      avg_milestone_completion: 0.72,
+      avg_health_score: 74,
+      top_performing_type: 'mentor_startup',
+      recommendation: 'Reduce inactivity threshold to 5 days for better responsiveness'
+    },
+    graph_diagnostics: {
+      bridge_suggestions: [
+        { reason: 'High compatibility based on industry and stage alignment', potential_score: 87 },
+        { reason: 'Mentor expertise directly matches startup growth needs', potential_score: 82 }
+      ]
+    },
     generic: {
       status: 'success',
       message: 'AI analysis completed',

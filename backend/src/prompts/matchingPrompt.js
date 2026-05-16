@@ -3,7 +3,7 @@
  * Uses Gemini to score compatibility between ecosystem entities
  */
 
-const buildMentorMatchPrompt = (startup, mentor) => `
+const buildMentorMatchPrompt = (startup, mentor, historicalContext = '') => `
 You are an expert ecosystem relationship manager specializing in startup-mentor matching for African innovation ecosystems.
 
 Analyze the compatibility between this startup and mentor. Consider industry alignment, experience relevance, geographic synergy, and growth stage fit.
@@ -32,7 +32,7 @@ Location:         ${mentor.location || 'Not specified'}
 Rating:           ${mentor.rating}/5 (${mentor.total_reviews} reviews)
 Availability:     ${mentor.availability}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
+${historicalContext ? `\nHISTORICAL OUTCOME DATA:\n${historicalContext}\n` : ''}
 Return ONLY valid JSON:
 {
   "compatibility_score": <number 0-100>,

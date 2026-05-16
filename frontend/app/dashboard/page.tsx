@@ -6,14 +6,14 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Briefcase, GraduationCap, GitBranch, Building2,
-  Brain, Zap, LayoutDashboard
+  Brain, Zap, LayoutDashboard, AlertTriangle, Clock, CheckCircle, XCircle
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import StatCard from "@/components/shared/StatCard";
 import PageHeader from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { dashboardApi } from "@/lib/api";
+import { dashboardApi, lifecycleApi } from "@/lib/api";
 import { getRiskBadge, timeAgo } from "@/lib/utils";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
@@ -34,13 +34,16 @@ export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [liveActivity, setLiveActivity] = useState<any[]>([]);
+  const [lifecycle, setLifecycle] = useState<any>(null);
 
   useEffect(() => {
-  dashboardApi.getInsights().then((res: any) => {
-    setData(res.data);
-    setLoading(false);
-  }).catch(() => setLoading(false));
-}, []);
+    Promise.all([dashboardApi.getInsights(), lifecycleApi.getSummary()])
+      .then(([insRes, lcRes]: any[]) => {
+        setData(insRes.data);
+        setLifecycle(lcRes.data);
+        setLoading(false);
+      }).catch(() => setLoading(false));
+  }, []);
 
 useEffect(() => {
   const q = query(
@@ -148,6 +151,65 @@ useEffect(() => {
           delay={0.3}
         />
       </div>
+
+      {/* Lifecycle Alerts */}
+      {lifecycle && (lifecycle.at_risk?.length > 0 || lifecycle.pending_milestones?.length > 0) && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-6"
+        >
+          <Card glass className="border-orange-500/20">
+            <div className="p-4 border-b border-white/8 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-orange-400" />
+                <h3 className="text-sm font-semibold">Lifecycle Alerts</h3>
+                <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full border border-orange-500/20">
+                  {(lifecycle.at_risk?.length || 0) + (lifecycle.pending_milestones?.length || 0)} items
+                </span>
+              </div>
+              <span className="text-[10px] text-muted-foreground">Automated by scheduler</span>
+            </div>
+            <div className="p-4 grid grid-cols-2 gap-4">
+              {/* At-risk relationships */}
+              {lifecycle.at_risk?.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-2">At-Risk Relationships</p>
+                  <div className="space-y-2">
+                    {lifecycle.at_risk.slice(0, 3).map((r: any) => (
+                      <div key={r.id} className="flex items-center gap-2 p-2 rounded-lg bg-red-500/8 border border-red-500/15">
+                        <XCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{r.startup_name}</p>
+                          <p className="text-[10px] text-muted-foreground">Health: {Math.round(r.health_score || 0)} · {r.engagement_health}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Pending milestones */}
+              {lifecycle.pending_milestones?.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-yellow-400 uppercase tracking-wider mb-2">Milestones Due Soon</p>
+                  <div className="space-y-2">
+                    {lifecycle.pending_milestones.slice(0, 3).map((m: any) => (
+                      <div key={m.id} className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/8 border border-yellow-500/15">
+                        <Clock className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{m.title}</p>
+                          <p className="text-[10px] text-muted-foreground">{m.startup_name} · Due {m.due_date}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
