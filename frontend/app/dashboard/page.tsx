@@ -1,5 +1,7 @@
 "use client";
 
+import { collection, onSnapshot, orderBy, query, limit } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -31,13 +33,26 @@ const CustomTooltip = ({ active, payload }: any) => {
 export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [liveActivity, setLiveActivity] = useState<any[]>([]);
 
   useEffect(() => {
-    dashboardApi.getInsights().then((res: any) => {
-      setData(res.data);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, []);
+  dashboardApi.getInsights().then((res: any) => {
+    setData(res.data);
+    setLoading(false);
+  }).catch(() => setLoading(false));
+}, []);
+
+useEffect(() => {
+  const q = query(
+    collection(db, 'activity_feed'),
+    orderBy('timestamp', 'desc'),
+    limit(20)
+  );
+  const unsub = onSnapshot(q, (snap) => {
+    setLiveActivity(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+  return () => unsub();
+}, []);
 
   if (loading) {
     return (
@@ -298,6 +313,32 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Live Activity Feed */}
+{liveActivity.length > 0 && (
+  <Card glass>
+    <CardHeader>
+      <CardTitle className="text-sm flex items-center gap-2">
+        <Zap className="w-4 h-4 text-yellow-400 animate-pulse" />
+        Live Activity Feed
+        <span className="ml-auto text-[10px] text-green-400 font-mono">● LIVE</span>
+      </CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-3">
+        {liveActivity.map((event: any) => (
+          <div key={event.id} className="flex items-start gap-3 py-2 border-b border-white/5 last:border-0">
+            <div className="w-2 h-2 rounded-full bg-violet-400 mt-1.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">{event.title}</p>
+              <p className="text-xs text-muted-foreground">{event.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+)}
 
       {/* AI Recommendations */}
       {insights?.recommendations && insights.recommendations.length > 0 && (
