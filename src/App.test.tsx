@@ -44,4 +44,29 @@ describe('App', () => {
     expect(screen.getByText('Approved')).toBeVisible();
     expect(screen.getByText('Evidence requested')).toBeVisible();
   });
+
+  it('switches to the service provider lens for deployment opportunities', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /service provider lens/i }));
+
+    expect(screen.getAllByText('MedReg Studio')).toHaveLength(2);
+    expect(screen.getByText('Provider deployment queue')).toBeVisible();
+    expect(screen.getByText('Which companies or programmes should this provider support next?')).toBeVisible();
+    expect(screen.getAllByText('PulseGrid regulatory sprint')).toHaveLength(2);
+  });
+
+  it('shows ranked partner opportunities in the partner lens', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /partner rankings lens/i }));
+
+    expect(screen.getByText('Ranked partner opportunities')).toBeVisible();
+    expect(screen.getByText('Which partners are most worth pursuing now?')).toBeVisible();
+    expect(screen.getByText('#1')).toBeVisible();
+    expect(screen.getAllByText('Regional Hospital Network')).toHaveLength(2);
+    expect(screen.getAllByText('Pilot pathway')).toHaveLength(2);
+    expect(screen.getByText('Warm intro')).toBeVisible();
+    expect(screen.getAllByText('Partner ranking detail')).toHaveLength(2);
+  });
 });
