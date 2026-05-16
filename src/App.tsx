@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { AppShell } from './components/AppShell';
+import { CohortGraph } from './components/CohortGraph';
 import { CohortMetrics } from './components/CohortMetrics';
 import { DashboardHeader } from './components/DashboardHeader';
 import { IngestionPanel } from './components/IngestionPanel';
 import { ProcessingTimeline } from './components/ProcessingTimeline';
+import { mentors, startups } from './domain/sampleCohort';
 import { useCohortDemo } from './state/useCohortDemo';
 
 function average(values: number[]) {
@@ -11,6 +14,7 @@ function average(values: number[]) {
 }
 
 export default function App() {
+  const [selectedRelationshipId, setSelectedRelationshipId] = useState<string | null>(null);
   const {
     phase,
     relationships,
@@ -31,6 +35,18 @@ export default function App() {
   };
   const displayedSteps =
     phase === 'processed' ? steps.map((step) => ({ ...step, status: 'done' as const })) : steps;
+  const handleProcessRows: typeof processRows = (rows) => {
+    setSelectedRelationshipId(null);
+    processRows(rows);
+  };
+  const handleFailWithMessage: typeof failWithMessage = (message) => {
+    setSelectedRelationshipId(null);
+    failWithMessage(message);
+  };
+  const handleResetDemo = () => {
+    setSelectedRelationshipId(null);
+    resetDemo();
+  };
 
   return (
     <AppShell>
@@ -39,7 +55,7 @@ export default function App() {
         cohortPeriod="May 2026 cohort period"
         baselineHealth={baselineHealth}
         refreshedHealth={evaluation?.cohortHealth ?? null}
-        onReset={resetDemo}
+        onReset={handleResetDemo}
       />
       <CohortMetrics relationships={relationships} evaluation={evaluation} />
       <div className="grid flex-1 grid-cols-[minmax(0,1fr)_390px] gap-0">
@@ -49,51 +65,35 @@ export default function App() {
               <p className="ui-sans text-xs font-semibold uppercase tracking-[0.14em] text-[#6c715f]">
                 Relationship surface
               </p>
-              <h2 className="mt-3 text-4xl font-semibold leading-none">Graph surface lands in Task 5</h2>
+              <h2 className="mt-3 text-4xl font-semibold leading-none">Mentor-startup relationship graph</h2>
             </div>
-            <span className="ui-sans border border-[#9d8f77] bg-[#fffaf0] px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#5d4d35]">
-              Temporary panel
-            </span>
-          </div>
-
-          <div className="mt-8 flex flex-1 flex-col border border-[#9d8f77] bg-[#fffaf0] p-6">
-            <div className="grid grid-cols-3 border border-[#9d8f77]">
-              <div className="border-r border-[#9d8f77] p-4">
-                <p className="ui-sans text-xs font-semibold uppercase tracking-[0.12em] text-[#657064]">Healthy</p>
-                <p className="mt-3 text-4xl font-semibold leading-none">{statusCounts.healthy}</p>
+            <div className="ui-sans grid grid-cols-3 border border-[#9d8f77] bg-[#fffaf0] text-center">
+              <div className="border-r border-[#9d8f77] px-4 py-3">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[#657064]">Healthy</p>
+                <p className="mt-1 text-2xl font-semibold text-[#17211c]">{statusCounts.healthy}</p>
               </div>
-              <div className="border-r border-[#9d8f77] p-4">
-                <p className="ui-sans text-xs font-semibold uppercase tracking-[0.12em] text-[#657064]">Watch</p>
-                <p className="mt-3 text-4xl font-semibold leading-none">{statusCounts.watch}</p>
+              <div className="border-r border-[#9d8f77] px-4 py-3">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[#657064]">Watch</p>
+                <p className="mt-1 text-2xl font-semibold text-[#17211c]">{statusCounts.watch}</p>
               </div>
-              <div className="p-4">
-                <p className="ui-sans text-xs font-semibold uppercase tracking-[0.12em] text-[#657064]">At risk</p>
-                <p className="mt-3 text-4xl font-semibold leading-none">{statusCounts.atRisk}</p>
-              </div>
-            </div>
-            <div className="mt-8 grid flex-1 grid-cols-[1fr_1.35fr_1fr] items-center gap-6">
-              <div className="space-y-4">
-                <span className="block h-3 w-2/3 bg-[#47594e]" />
-                <span className="block h-3 w-5/6 bg-[#7c856e]" />
-                <span className="block h-3 w-1/2 bg-[#b28c55]" />
-              </div>
-              <div className="flex aspect-square items-center justify-center border border-[#17211c] bg-[#f7f1e5]">
-                <div className="flex size-44 items-center justify-center border border-[#9d8f77]">
-                  <div className="size-20 border border-[#17211c] bg-[#ede4d1]" />
-                </div>
-              </div>
-              <div className="space-y-4">
-                <span className="ml-auto block h-3 w-4/5 bg-[#47594e]" />
-                <span className="ml-auto block h-3 w-2/3 bg-[#7c856e]" />
-                <span className="ml-auto block h-3 w-1/2 bg-[#8f3d34]" />
+              <div className="px-4 py-3">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[#657064]">At risk</p>
+                <p className="mt-1 text-2xl font-semibold text-[#17211c]">{statusCounts.atRisk}</p>
               </div>
             </div>
           </div>
 
-          <p className="ui-sans mt-6 max-w-2xl text-sm leading-6 text-[#59675e]">
-            This placeholder previews the executive review density only. Task 5 will replace it with the relationship
-            graph surface and interaction model.
-          </p>
+          <div className="mt-8 flex flex-1 border border-[#9d8f77] bg-[#fffaf0]">
+            <CohortGraph
+              relationships={relationships}
+              mentors={mentors}
+              startups={startups}
+              onSelectRelationship={(relationshipId) => {
+                setSelectedRelationshipId(relationshipId);
+                setDrawerOpen(true);
+              }}
+            />
+          </div>
         </section>
 
         <aside className="space-y-5 p-6">
@@ -102,7 +102,7 @@ export default function App() {
               {errorMessage}
             </div>
           ) : null}
-          <IngestionPanel onRows={processRows} onError={failWithMessage} />
+          <IngestionPanel onRows={handleProcessRows} onError={handleFailWithMessage} />
           <ProcessingTimeline steps={displayedSteps} />
           {evaluation && drawerOpen ? (
             <section className="border border-[#17211c] bg-[#fffaf0] p-5 shadow-[6px_6px_0_#9d8f77]">
@@ -122,6 +122,11 @@ export default function App() {
                 </button>
               </div>
               <p className="mt-4 text-lg leading-7 text-[#314036]">{evaluation.executiveSummary}</p>
+              {selectedRelationshipId ? (
+                <p className="ui-sans mt-4 border border-[#9d8f77] bg-[#f7f1e5] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[#5d4d35]">
+                  Selected relationship: {selectedRelationshipId}
+                </p>
+              ) : null}
               <p className="ui-sans mt-4 text-sm leading-6 text-[#59675e]">
                 This reserves the right-side review outlet only. Task 6 will replace it with the real drawer contents.
               </p>

@@ -43,7 +43,7 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByText('Cohort Atlas')).toBeVisible();
-    expect(screen.getByText('Graph surface lands in Task 5')).toBeVisible();
+    expect(screen.getByText('Mentor-startup relationship graph')).toBeVisible();
     expect(screen.getByRole('button', { name: /reset demo/i })).toBeVisible();
     expect(screen.getByRole('button', { name: /process raw information/i })).toBeVisible();
     expect(screen.getByRole('button', { name: /use sample csv/i })).toBeVisible();
@@ -62,7 +62,7 @@ describe('App', () => {
     expect(await screen.findByText('Baseline 48 -> refreshed 70 (+22 pts).')).toBeVisible();
     expect(screen.getByText('85%')).toBeVisible();
     expect(screen.getByText('12 monthly rows processed.')).toBeVisible();
-    expect(screen.getByText('Graph surface lands in Task 5')).toBeVisible();
+    expect(screen.getByText('Mentor-startup relationship graph')).toBeVisible();
     expect(screen.getByText('Executive review drawer')).toBeVisible();
     expect(
       screen.getByText(/Monthly mentor records show materially stronger cohort signal/i),

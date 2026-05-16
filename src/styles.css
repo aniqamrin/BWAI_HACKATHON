@@ -39,3 +39,104 @@ button {
 .react-flow__attribution {
   display: none;
 }
+
+.cohort-graph {
+  height: 660px;
+  max-height: 72vh;
+  min-height: 560px;
+  width: 100%;
+  background-color: #fffaf0;
+}
+
+.cohort-graph .react-flow__pane {
+  cursor: default;
+}
+
+.cohort-graph .react-flow__node.cohort-node {
+  width: 172px;
+  border: 1px solid #17211c;
+  border-radius: 0;
+  padding: 11px 13px;
+  color: #17211c;
+  font-family: "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: 4px 4px 0 #9d8f77;
+}
+
+.cohort-graph .cohort-node__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cohort-graph .cohort-node__detail {
+  margin-top: 4px;
+  color: #59675e;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.cohort-graph .react-flow__node.node-mentor {
+  background-color: #17211c;
+  color: #fffaf0;
+  box-shadow: 4px 4px 0 #47594e;
+}
+
+.cohort-graph .react-flow__node.node-mentor .cohort-node__detail {
+  color: #d9cfbd;
+}
+
+.cohort-graph .react-flow__node.node-startup {
+  background-color: #f7f1e5;
+}
+
+.cohort-graph .react-flow__node.node-risk {
+  border-color: #8f3d34;
+  box-shadow: 4px 4px 0 #8f3d34;
+}
+
+.cohort-graph .react-flow__node.node-watch {
+  border-color: #b28c55;
+  box-shadow: 4px 4px 0 #b28c55;
+}
+
+.cohort-graph .react-flow__node.node-healthy {
+  border-color: #47594e;
+  box-shadow: 4px 4px 0 #47594e;
+}
+
+.cohort-graph .react-flow__handle {
+  height: 7px;
+  width: 7px;
+  border: 1px solid #17211c;
+  background-color: #fffaf0;
+}
+
+.cohort-graph .react-flow__edge {
+  cursor: pointer;
+}
+
+.cohort-graph .react-flow__edge-path {
+  stroke-width: 2.5;
+}
+
+.cohort-graph .react-flow__edge.edge-risk .react-flow__edge-path {
+  stroke: #8f3d34;
+}
+
+.cohort-graph .react-flow__edge.edge-watch .react-flow__edge-path {
+  stroke: #b28c55;
+}
+
+.cohort-graph .react-flow__edge.edge-healthy .react-flow__edge-path {
+  stroke: #47594e;
+}
+
+.cohort-graph .react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 7 5;
+}
