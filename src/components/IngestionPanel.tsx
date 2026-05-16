@@ -122,7 +122,8 @@ export function IngestionPanel({ onRows, onError }: IngestionPanelProps) {
           ref={inputRef}
           type="file"
           accept=".csv,text/csv"
-          className={`sr-only ${focusRing}`}
+          tabIndex={-1}
+          className="hidden"
           onChange={handleInputChange}
         />
       </div>

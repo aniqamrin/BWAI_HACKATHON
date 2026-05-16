@@ -57,7 +57,7 @@ describe('App', () => {
 
     render(<App />);
 
-    await userEvent.click(screen.getByRole('button', { name: /use sample csv/i }));
+    await userEvent.click(screen.getByRole('button', { name: /process raw information/i }));
 
     expect(await screen.findByText('Baseline 48 -> refreshed 70 (+22 pts).')).toBeVisible();
     expect(screen.getByText('85%')).toBeVisible();
