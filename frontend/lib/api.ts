@@ -291,3 +291,9 @@ export const graphApi = {
 };
 
 export default apiRequest;
+
+export const firestoreApi = {
+  getActivity: (limit = 20) => apiRequest(`/api/firestore/activity?limit=${limit}`),
+  getNotifications: () => apiRequest('/api/firestore/notifications'),
+  markRead: (id: string) => apiRequest(`/api/firestore/notifications/${id}/read`, { method: 'PATCH' }),
+};
