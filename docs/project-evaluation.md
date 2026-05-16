@@ -1,4 +1,4 @@
-# EcosystemOS / Relationship OS Evaluation
+# X combinator Evaluation
 
 The main point is that the project does not simply add AI to a directory of startups and mentors. It reframes ecosystem coordination as a data and workflow problem: relationships become structured, reusable, inspectable entities that can be created, ranked, reviewed, and improved over time.
 
@@ -23,7 +23,7 @@ Main repository evidence:
 
 ## What Makes the Solution Elegant
 
-The elegant part of EcosystemOS is the decision to make relationships first-class objects. In many ecosystem tools, the core records are people, companies, programmes, and events. The relationship between those records is often stored as a note, a CRM status, a manually assigned owner, or a static match score. That works for a small cohort, but it breaks down as soon as the ecosystem spans countries, programmes, partners, and service providers.
+The elegant part of X combinator is the decision to make relationships first-class objects. In many ecosystem tools, the core records are people, companies, programmes, and events. The relationship between those records is often stored as a note, a CRM status, a manually assigned owner, or a static match score. That works for a small cohort, but it breaks down as soon as the ecosystem spans countries, programmes, partners, and service providers.
 
 This prototype treats the relationship itself as the operating unit. A mentor-to-company link, company-to-programme fit, provider deployment, or partner pathway can have evidence, confidence, ranking, status, rationale, human decisions, and follow-up actions. That makes the product more than a dashboard. It becomes a coordination layer that can remember what worked, explain why a recommendation exists, and reuse that relationship logic in new contexts.
 
@@ -43,7 +43,7 @@ The architecture also leaves room for Google Cloud Run or Cloud Functions. Evide
 
 ## 2. AI Implementation Quality
 
-AI is essential to this solution because the main problem is not only data entry. The difficult part is interpreting relationship quality and opportunity from incomplete evidence. A human programme manager can read a WhatsApp thread, a pitch deck, a partner page, and a few meeting notes and infer that one mentor is better suited than another. EcosystemOS is designed to make that judgement repeatable and auditable at platform scale.
+AI is essential to this solution because the main problem is not only data entry. The difficult part is interpreting relationship quality and opportunity from incomplete evidence. A human programme manager can read a WhatsApp thread, a pitch deck, a partner page, and a few meeting notes and infer that one mentor is better suited than another. X combinator is designed to make that judgement repeatable and auditable at platform scale.
 
 The AI role is specific:
 
@@ -65,7 +65,7 @@ The current branch is strongest as a polished working front-end prototype. It de
 
 The working demo includes:
 
-- A relationship operating surface called Relationship OS.
+- A relationship operating surface called X combinator.
 - Multiple ecosystem lenses: company, service provider, partner rankings, and mentor rankings.
 - A next-step action queue for relationship creation, approval, and evidence requests.
 - A supporting insight layer with relationship maps, external signals, internal signals, and recommendation details.
@@ -97,7 +97,7 @@ For the next production iteration, model performance should be measured against 
 
 ## 5. Originality and Creativity
 
-The original idea in EcosystemOS is not "AI matching". AI matching is already common. The more creative idea is programmable ecosystem relationships.
+The original idea in X combinator is not "AI matching". AI matching is already common. The more creative idea is programmable ecosystem relationships.
 
 Instead of treating a mentor match as a one-time event, the system treats it as a living object with evidence, health, confidence, status, rationale, and history. The same pattern can apply to service-provider deployments, programme assignments, partner pathways, investor introductions, and administrative governance. That gives the ecosystem owner a reusable operating model rather than a pile of disconnected recommendations.
 
@@ -113,9 +113,9 @@ Many existing tools in this space look like one of three categories:
 - A marketplace directory for finding mentors, startups, or partners.
 - A dashboard for programme metrics and reporting.
 
-EcosystemOS is different because it focuses on the relationship as the reusable system entity. The platform is not only asking "Who exists?" or "What score did they get?" It asks "What relationship should be created or changed next, based on evidence, and under what governance conditions?"
+X combinator is different because it focuses on the relationship as the reusable system entity. The platform is not only asking "Who exists?" or "What score did they get?" It asks "What relationship should be created or changed next, based on evidence, and under what governance conditions?"
 
-That difference matters operationally. A directory still leaves humans to decide which connections matter. A CRM records work after it happens. A static matching tool may recommend a mentor once and then lose track of whether the relationship was useful. EcosystemOS is designed to keep the relationship active in the system: recommended, reviewed, acted on, monitored, and reused as future evidence.
+That difference matters operationally. A directory still leaves humans to decide which connections matter. A CRM records work after it happens. A static matching tool may recommend a mentor once and then lose track of whether the relationship was useful. X combinator is designed to keep the relationship active in the system: recommended, reviewed, acted on, monitored, and reused as future evidence.
 
 This is a sharper response to the problem statement because the problem statement is about ecosystem relationships being ad hoc and difficult to reuse. The product's core model directly attacks that issue.
 
@@ -172,7 +172,7 @@ The main deployment risk is not whether the app can be hosted. The larger risk i
 
 ## Overall Assessment
 
-EcosystemOS is a strong hackathon solution because it solves the problem at the right level of abstraction. The problem statement is not asking for another participant database. It is asking for a way to automate and manage ecosystem relationships as reusable, programmable entities. The current branch demonstrates that idea through a polished operator interface, coherent mock data, relationship lenses, ranking workflows, ingestion states, and a Firebase-ready data contract.
+X combinator is a strong hackathon solution because it solves the problem at the right level of abstraction. The problem statement is not asking for another participant database. It is asking for a way to automate and manage ecosystem relationships as reusable, programmable entities. The current branch demonstrates that idea through a polished operator interface, coherent mock data, relationship lenses, ranking workflows, ingestion states, and a Firebase-ready data contract.
 
 The most defensible claim is this: the project turns ecosystem coordination from manual assignment work into an evidence-driven relationship operating system. Gemini provides the reasoning layer, Firebase and Firestore provide the production data path, and the UI keeps the human operator focused on decisions instead of data plumbing.
 
