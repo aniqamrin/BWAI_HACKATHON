@@ -56,16 +56,80 @@ const DETERMINISTIC_RESULTS: Record<
     },
     recommended_action: 'Keep the relationship on watch until the integration owner confirms closure.',
   },
-  'M-221:S-HELIOS': {
-    engagement_health: 54,
-    confidence: 79,
-    reasoning:
-      'The sprint plan reset improved the signal, but prior low sync hours and founder confidence keep this relationship fragile.',
+  'M-104:S-VAULT': {
+    engagement_health: 70,
+    confidence: 86,
+    reasoning: 'ICP and sales sequence work improved the sales motion, while mixed pipeline quality keeps the relationship on watch.',
     signals: {
-      positive: ['Sprint plan rebuilt', 'Measurable owner assigned'],
-      negative: ['Founder confidence remains below cohort median'],
+      positive: ['ICP clarified', 'Sales sequence revised', 'Mentor confidence at 8/10'],
+      negative: ['Pipeline quality is still mixed'],
     },
-    recommended_action: 'Review operating cadence after the next sprint checkpoint.',
+    recommended_action: 'Pressure-test three qualified opportunities before the next growth review.',
+  },
+  'M-221:S-HELIOS': {
+    engagement_health: 49,
+    confidence: 76,
+    reasoning:
+      'The hiring plan was reviewed, but low sync hours and dipped founder confidence after a missed sprint keep this relationship at risk.',
+    signals: {
+      positive: ['Hiring plan reviewed'],
+      negative: ['Low sync hours', 'Founder confidence dipped after missed sprint', 'Mentor confidence remains 5/10'],
+    },
+    recommended_action: 'Reset the founder operating cadence before returning to hiring plan execution.',
+  },
+  'M-207:S-FERN': {
+    engagement_health: 76,
+    confidence: 88,
+    reasoning:
+      'Retention analysis and success metrics are complete, with only customer expansion ownership left to clarify.',
+    signals: {
+      positive: ['Retention analysis completed', 'Success metrics completed', 'Founder and mentor confidence aligned at 8/10'],
+      negative: ['Customer expansion owner is unclear'],
+    },
+    recommended_action: 'Assign the customer expansion owner before the next success metrics review.',
+  },
+  'M-410:S-LOOP': {
+    engagement_health: 62,
+    confidence: 82,
+    reasoning:
+      'Enterprise proposal work is active, but the procurement objection remains unresolved and limits the LoopPay enterprise path.',
+    signals: {
+      positive: ['Enterprise proposal draft reviewed', 'Confidence scores aligned at 7/10'],
+      negative: ['Procurement objection remains unresolved'],
+    },
+    recommended_action: 'Run a procurement objection review with the procurement coach and GTM partner together.',
+  },
+  'M-319:S-NOVA': {
+    engagement_health: 85,
+    confidence: 91,
+    reasoning: 'Launch checklist and demo narrative are finalized, with scheduling as the only visible blocker.',
+    signals: {
+      positive: ['Launch checklist finalized', 'Demo narrative finalized', 'Founder confidence at 9/10'],
+      negative: ['Scheduling remains the only blocker'],
+    },
+    recommended_action: 'Lock launch rehearsal time and convert the checklist into owner-level tasks.',
+  },
+  'M-058:S-HELIOS': {
+    engagement_health: 64,
+    confidence: 83,
+    reasoning:
+      'The sprint plan was rebuilt with a measurable owner, and the technical blocker was reduced but still needs closure.',
+    signals: {
+      positive: ['Sprint plan rebuilt', 'Measurable owner assigned', 'Technical blocker reduced'],
+      negative: ['Technical blocker is not closed'],
+    },
+    recommended_action: 'Keep the technical mentor attached until the blocker has a verified closure signal.',
+  },
+  'M-221:S-PULSE': {
+    engagement_health: 57,
+    confidence: 80,
+    reasoning:
+      'Clinical validation work moved forward, but founder uncertainty around regulatory sequencing keeps PulseGrid on watch.',
+    signals: {
+      positive: ['Clinical validation memo reviewed'],
+      negative: ['Founder remains uncertain on regulatory sequencing', 'Confidence scores are 6/10'],
+    },
+    recommended_action: 'Create a regulatory sequencing owner map before the next clinical validation review.',
   },
 };
 

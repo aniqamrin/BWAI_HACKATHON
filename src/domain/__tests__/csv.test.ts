@@ -37,4 +37,13 @@ M-104,S-LOOP,7,Drafted GTM strategy,Enterprise intro blocked,11,8`);
       expect(result.message).toContain('founder_confidence_score');
     }
   });
+
+  it('rejects blank required text cells', () => {
+    const result = parseCohortCsv(`mentor_id,startup_id,hours_synced,milestones_completed,blockers_identified,founder_confidence_score,mentor_confidence_score
+ ,S-LOOP,7,Drafted GTM strategy,Enterprise intro blocked,8,8`);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message).toBe('mentor_id is required on row 2.');
+    }
+  });
 });

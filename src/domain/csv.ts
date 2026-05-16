@@ -28,6 +28,13 @@ function validateScore(value: number, column: string, rowNumber: number): ParseF
   return null;
 }
 
+function validateRequiredText(value: unknown, column: string, rowNumber: number): ParseFailure | null {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return { ok: false, message: `${column} is required on row ${rowNumber}.` };
+  }
+  return null;
+}
+
 export function parseCohortCsv(csvText: string): ParseResult {
   const parsed = Papa.parse<Record<string, string>>(csvText.trim(), {
     header: true,
@@ -54,6 +61,13 @@ export function parseCohortCsv(csvText: string): ParseResult {
     const hours = toNumber(raw.hours_synced);
     const founderScore = toNumber(raw.founder_confidence_score);
     const mentorScore = toNumber(raw.mentor_confidence_score);
+
+    const requiredTextError =
+      validateRequiredText(raw.mentor_id, 'mentor_id', rowNumber) ??
+      validateRequiredText(raw.startup_id, 'startup_id', rowNumber) ??
+      validateRequiredText(raw.milestones_completed, 'milestones_completed', rowNumber) ??
+      validateRequiredText(raw.blockers_identified, 'blockers_identified', rowNumber);
+    if (requiredTextError) return requiredTextError;
 
     if (!Number.isFinite(hours) || hours < 0) {
       return { ok: false, message: `hours_synced must be a non-negative number on row ${rowNumber}.` };
