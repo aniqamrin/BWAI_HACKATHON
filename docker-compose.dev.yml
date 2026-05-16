@@ -1,0 +1,55 @@
+version: "3.9"
+
+# Development override — hot reload, no build step
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ecosystemos_db_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ecosystemos_db
+      POSTGRES_USER: ecosystemos
+      POSTGRES_PASSWORD: ecosystemos_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./backend/src/db/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ecosystemos -d ecosystemos_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecosystemos_dev
+
+  backend:
+    image: node:20-alpine
+    container_name: ecosystemos_backend_dev
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://ecosystemos:ecosystemos_pass@postgres:5432/ecosystemos_db
+      JWT_SECRET: dev_secret_key_not_for_production
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - ecosystemos_dev
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  ecosystemos_dev:
+    driver: bridge
