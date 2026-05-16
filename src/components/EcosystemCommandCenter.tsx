@@ -46,7 +46,7 @@ type ActionDecision = 'approved' | 'evidence-requested';
 
 type DisplayStatus = Action['status'] | 'Approved' | 'Evidence requested';
 
-type LensId = 'company' | 'service-provider' | 'partner-rankings';
+type LensId = 'company' | 'service-provider' | 'partner-rankings' | 'mentor-rankings';
 
 type LensConfig = {
   id: LensId;
@@ -316,10 +316,70 @@ const partnerRankingActions: Action[] = [
   },
 ];
 
+const mentorRankingActions: Action[] = [
+  {
+    id: 'mentor-priya',
+    title: 'Priya Raman',
+    actor: 'Architecture mentor',
+    confidence: '91%',
+    status: 'Auto-ready',
+    category: 'Mentor',
+    detailHeading: 'Priya Raman',
+    rank: 1,
+    tags: ['Architecture mentor', 'Fast cadence', 'Warm relationship'],
+    rationale:
+      'Best mentor fit because her integration architecture track record maps directly to PulseGrid unresolved technical risk and the founder already responds quickly to her guidance.',
+    evidence: ['Meeting telemetry', 'Mentor outcome history', 'WhatsApp follow-up pattern'],
+  },
+  {
+    id: 'mentor-daniel',
+    title: 'Daniel Khoo',
+    actor: 'Commercialisation mentor',
+    confidence: '84%',
+    status: 'Review suggested',
+    category: 'Mentor',
+    detailHeading: 'Daniel Khoo',
+    rank: 2,
+    tags: ['Buyer access', 'Sector fit', 'Cadence watch'],
+    rationale:
+      'Strong secondary mentor for buyer discovery, but the evidence shows slower response cadence than the architecture support path.',
+    evidence: ['Founder profile', 'Buyer segment overlap', 'Follow-up age'],
+  },
+  {
+    id: 'mentor-alicia',
+    title: 'Alicia Mensah',
+    actor: 'Clinical validation mentor',
+    confidence: '80%',
+    status: 'Auto-ready',
+    category: 'Mentor',
+    detailHeading: 'Alicia Mensah',
+    rank: 3,
+    tags: ['Clinical proof', 'Validation support', 'Warm intro'],
+    rationale:
+      'Useful for validation planning after the immediate integration work is moving, especially if the hospital pathway opens.',
+    evidence: ['Clinical workflow evidence', 'Partner pathway match', 'Past mentor outcomes'],
+  },
+  {
+    id: 'mentor-farah',
+    title: 'Farah Lim',
+    actor: 'Fundraising mentor',
+    confidence: '72%',
+    status: 'Manual evidence needed',
+    category: 'Mentor',
+    detailHeading: 'Farah Lim',
+    rank: 4,
+    tags: ['Fundraising help', 'Timing mismatch', 'Evidence gap'],
+    rationale:
+      'Potentially useful later, but the current blocker evidence points to technical and clinical sequencing before fundraising preparation.',
+    evidence: ['Funding readiness score', 'Missing investor brief', 'Programme priority rule'],
+  },
+];
+
 const actionsByLens: Record<LensId, Action[]> = {
   company: relationshipActions,
   'service-provider': serviceProviderActions,
   'partner-rankings': partnerRankingActions,
+  'mentor-rankings': mentorRankingActions,
 };
 
 const lensConfigs: Record<LensId, LensConfig> = {
@@ -413,6 +473,36 @@ const lensConfigs: Record<LensId, LensConfig> = {
     conclusionText:
       'Regional Hospital Network should be pursued first because it combines a clear pilot pathway, warm programme access, and stronger evidence than the regulatory or commercial alternatives.',
   },
+  'mentor-rankings': {
+    id: 'mentor-rankings',
+    label: 'Mentor rankings',
+    ariaLabel: 'Mentor rankings lens',
+    source: 'linkedin.com/company/pulsegrid-health + mentor evidence',
+    sourceState: 'Mentor context',
+    profileLabel: 'Ranking context',
+    profileTitle: 'PulseGrid mentorship bench',
+    profileText:
+      'Mentor ranking compares founder need, relationship warmth, response cadence, advice quality, and prior mentor outcomes.',
+    statOne: ['Priority', 'Integration'],
+    statTwo: ['Mentors', '4 ranked'],
+    facts: [
+      ['Ranking goal', 'Find the mentor most likely to move the next blocker'],
+      ['Best mentor type', 'Architecture mentor with fast follow-up cadence'],
+      ['Governance flag', 'Watch mentor load before assigning a second support line'],
+    ],
+    mapEyebrow: 'Mentor intelligence',
+    mapTitle: 'Ranked mentor opportunities',
+    mapQuestion: 'Which mentors should support this founder next?',
+    mapBadge: '4 ranked mentors',
+    queueEyebrow: 'AI mentor detail',
+    queueTitle: 'Mentor ranking detail',
+    selectedLabel: 'Mentor ranking detail',
+    selectedDefaultId: 'mentor-priya',
+    processedSelectionId: 'mentor-priya',
+    conclusionTitle: 'The system ranks mentors by blocker fit, relationship signal, and follow-through risk.',
+    conclusionText:
+      'Priya Raman should be assigned first because the strongest evidence points to architecture risk, fast mentor cadence, and a warm relationship that is already producing follow-up.',
+  },
 };
 
 const companyMapActors: MapActor[] = [
@@ -451,12 +541,12 @@ const serviceProviderMapLines: MapLine[] = [
   { x1: '49%', y1: '86%', x2: '76%', y2: '20%', stroke: '#9d8f77', strokeWidth: '1.5', strokeDasharray: '3 6' },
 ];
 
-const mapActorsByLens: Record<Exclude<LensId, 'partner-rankings'>, MapActor[]> = {
+const mapActorsByLens: Record<Exclude<LensId, 'partner-rankings' | 'mentor-rankings'>, MapActor[]> = {
   company: companyMapActors,
   'service-provider': serviceProviderMapActors,
 };
 
-const mapLinesByLens: Record<Exclude<LensId, 'partner-rankings'>, MapLine[]> = {
+const mapLinesByLens: Record<Exclude<LensId, 'partner-rankings' | 'mentor-rankings'>, MapLine[]> = {
   company: companyMapLines,
   'service-provider': serviceProviderMapLines,
 };
@@ -675,26 +765,34 @@ function RelationshipMap({
   );
 }
 
-function PartnerRankingsPanel({
+function RankingsPanel({
   rankings,
   selectedActionId,
   onSelect,
+  eyebrow,
+  title,
+  question,
+  badge,
 }: {
   rankings: Action[];
   selectedActionId: string;
   onSelect: (actionId: string) => void;
+  eyebrow: string;
+  title: string;
+  question: string;
+  badge: string;
 }) {
   return (
     <section className="min-h-[478px] border border-[#17211c] bg-[#fffaf0]">
       <div className="flex flex-col gap-3 border-b border-[#9d8f77] bg-[#f7f1e5] px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Partner intelligence</p>
-          <h2 className="mt-1 text-2xl font-semibold leading-tight">Ranked partner opportunities</h2>
-          <p className="ui-sans mt-2 text-sm leading-6 text-[#405047]">Which partners are most worth pursuing now?</p>
+          <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">{eyebrow}</p>
+          <h2 className="mt-1 text-2xl font-semibold leading-tight">{title}</h2>
+          <p className="ui-sans mt-2 text-sm leading-6 text-[#405047]">{question}</p>
         </div>
         <div className="ui-sans flex w-fit items-center gap-2 border border-[#45624f] bg-[#dce6d8] px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-[#263b2d]">
           <CheckCircle2 className="h-4 w-4" aria-hidden />
-          4 ranked partners
+          {badge}
         </div>
       </div>
 
@@ -758,7 +856,8 @@ export function EcosystemCommandCenter() {
   );
   const approvedCount = Object.values(decisions).filter((decision) => decision === 'approved').length;
   const evidenceRequestCount = Object.values(decisions).filter((decision) => decision === 'evidence-requested').length;
-  const relationshipMapLens: Exclude<LensId, 'partner-rankings'> =
+  const isRankingLens = activeLensId === 'partner-rankings' || activeLensId === 'mentor-rankings';
+  const relationshipMapLens: Exclude<LensId, 'partner-rankings' | 'mentor-rankings'> =
     activeLensId === 'service-provider' ? 'service-provider' : 'company';
 
   function displayStatusFor(action: Action): DisplayStatus {
@@ -808,7 +907,7 @@ export function EcosystemCommandCenter() {
           <div className="min-w-0">
             <div className="mb-4">
               <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Operating lens</p>
-              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label="Operating lens selector">
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4" role="group" aria-label="Operating lens selector">
                 {Object.values(lensConfigs).map((lens) => {
                   const isActive = activeLensId === lens.id;
 
@@ -908,11 +1007,15 @@ export function EcosystemCommandCenter() {
           </aside>
 
           <section className="min-w-0 p-4 sm:p-5">
-            {activeLensId === 'partner-rankings' ? (
-              <PartnerRankingsPanel
-                rankings={partnerRankingActions}
+            {isRankingLens ? (
+              <RankingsPanel
+                rankings={activeActions}
                 selectedActionId={selectedAction.id}
                 onSelect={setSelectedActionId}
+                eyebrow={activeLens.mapEyebrow}
+                title={activeLens.mapTitle}
+                question={activeLens.mapQuestion}
+                badge={activeLens.mapBadge}
               />
             ) : (
               <RelationshipMap
@@ -934,7 +1037,7 @@ export function EcosystemCommandCenter() {
               <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">{activeLens.queueEyebrow}</p>
               <h2 className="mt-2 text-3xl font-semibold leading-none">{activeLens.queueTitle}</h2>
             </div>
-            {activeLensId !== 'partner-rankings' ? (
+            {!isRankingLens ? (
               <div className="grid divide-y divide-[#cab99d] lg:grid-cols-2 lg:divide-x lg:divide-y-0">
                 {activeActions.map((action) => (
                   <article key={action.title} className="bg-[#fffaf0] px-5 py-4">
@@ -978,7 +1081,7 @@ export function EcosystemCommandCenter() {
                 ))}
               </div>
             ) : null}
-            <section className={`${activeLensId === 'partner-rankings' ? '' : 'border-t'} border-[#17211c] bg-[#f7f1e5] px-5 py-5`}>
+            <section className={`${isRankingLens ? '' : 'border-t'} border-[#17211c] bg-[#f7f1e5] px-5 py-5`}>
               <p className="ui-sans text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">
                 {activeLens.selectedLabel}
               </p>

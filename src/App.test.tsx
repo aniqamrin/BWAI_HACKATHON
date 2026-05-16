@@ -72,6 +72,20 @@ describe('App', () => {
     expect(screen.getAllByText('Partner ranking detail')).toHaveLength(2);
   });
 
+  it('shows ranked mentor opportunities in the mentor lens', async () => {
+    render(<App />);
+
+    await userEvent.click(screen.getByRole('button', { name: /mentor rankings lens/i }));
+
+    expect(screen.getByText('Ranked mentor opportunities')).toBeVisible();
+    expect(screen.getByText('Which mentors should support this founder next?')).toBeVisible();
+    expect(screen.getByText('#1')).toBeVisible();
+    expect(screen.getAllByText('Priya Raman')).toHaveLength(2);
+    expect(screen.getAllByText('Architecture mentor')).toHaveLength(2);
+    expect(screen.getByText('Fast cadence')).toBeVisible();
+    expect(screen.getAllByText('Mentor ranking detail')).toHaveLength(2);
+  });
+
   it('makes WhatsApp upload a prominent relationship evidence source', async () => {
     render(<App />);
 
