@@ -331,6 +331,63 @@ function StatusPill({ status }: { status: ActionStatus | "Approved" | "Evidence 
   );
 }
 
+function HeaderMetricButton({
+  label,
+  value,
+  detail,
+  actionLabel,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  actionLabel: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="group min-h-[76px] border border-[#9d8f77] bg-[#fbf4e7] px-2 py-3 text-center transition-colors hover:bg-[#f7f1e5] focus:outline-none focus-visible:bg-[#f7f1e5] focus-visible:ring-2 focus-visible:ring-[#17211c] focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffaf0] sm:min-h-[96px] sm:px-4 sm:py-4"
+      onClick={onClick}
+    >
+      <span className="block text-[0.54rem] font-bold uppercase tracking-[0.16em] text-[#657064] sm:text-[0.66rem] sm:tracking-[0.2em]">{label}</span>
+      <span className="mt-2 block text-3xl font-semibold leading-none text-[#17211c] sm:text-4xl">{value}</span>
+      <span className="mt-1 block text-xs text-[#59675e] sm:text-sm">{detail}</span>
+      <span className="mt-3 hidden items-center justify-center gap-1 text-[0.58rem] font-bold uppercase tracking-[0.12em] text-[#405047] opacity-80 group-hover:opacity-100 sm:inline-flex">
+        {actionLabel}
+        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+      </span>
+    </button>
+  );
+}
+
+function ActionCallout({
+  label,
+  title,
+  detail,
+  tone = "insight",
+}: {
+  label: string;
+  title: string;
+  detail: string;
+  tone?: "decision" | "recommendation" | "insight";
+}) {
+  const toneClass =
+    tone === "decision"
+      ? "border-[#45624f] bg-[#dce6d8]"
+      : tone === "recommendation"
+        ? "border-[#ad8448] bg-[#f0dfbf]"
+        : "border-[#9d8f77] bg-[#fbf4e7]";
+
+  return (
+    <div className={cn("border px-4 py-4", toneClass)}>
+      <p className="text-[0.64rem] font-bold uppercase tracking-[0.14em] text-[#59675e]">{label}</p>
+      <h3 className="mt-2 text-lg font-semibold leading-tight text-[#17211c]">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-[#405047]">{detail}</p>
+    </div>
+  );
+}
+
 function SourceBadge({ source }: { source: EvidenceSource }) {
   const IconComponent = sourceIcons[source.id] ?? FileText;
 
@@ -388,34 +445,61 @@ function LensBar({
   activeLens: LensId;
   onSelectLens: (lensId: LensId) => void;
 }) {
+  const tabCopy: Record<LensId, { title: string; detail: string; metric: string }> = {
+    relationships: {
+      title: "Actions",
+      detail: "What should happen next",
+      metric: `${relationshipOsSnapshot.actions.filter((action) => action.lensId === "relationships").length} queued`,
+    },
+    "mentor-ranking": {
+      title: "Mentor Ranking",
+      detail: "Who to deploy first",
+      metric: `${relationshipOsSnapshot.mentorRankings.length} ranked`,
+    },
+    "partner-intros": {
+      title: "Partner Intros",
+      detail: "Warm paths worth taking",
+      metric: `${relationshipOsSnapshot.actions.filter((action) => action.lensId === "partner-intros").length} intro`,
+    },
+    evidence: {
+      title: "Evidence",
+      detail: "Why the model believes it",
+      metric: `${relationshipOsSnapshot.signals.length} signals`,
+    },
+  };
+
   return (
-    <section className="grid gap-2 border border-[#17211c] bg-[#17211c] p-2 lg:grid-cols-4">
+    <nav aria-label="Relationship OS views" className="border border-[#17211c] bg-[#17211c] p-2">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
       {relationshipOsSnapshot.lenses.map((lens) => {
         const IconComponent = lensIcons[lens.id];
         const isActive = activeLens === lens.id;
+        const copy = tabCopy[lens.id];
 
         return (
           <button
             key={lens.id}
             type="button"
+            aria-current={isActive ? "page" : undefined}
             className={cn(
-              "min-h-[118px] border px-4 py-4 text-left transition-colors",
+              "grid min-h-[72px] grid-cols-[18px_minmax(0,1fr)] items-center gap-2 border px-3 py-3 text-left transition-colors sm:grid-cols-[20px_minmax(0,1fr)_auto] sm:gap-3",
               isActive ? "border-[#fffaf0] bg-[#fffaf0] text-[#17211c]" : "border-[#4d594f] bg-[#17211c] text-[#e5decd] hover:bg-[#24332b]",
             )}
             onClick={() => onSelectLens(lens.id)}
           >
-            <div className="flex items-center justify-between gap-3">
-              <IconComponent className="h-4 w-4" aria-hidden />
-              <span className={cn("text-[0.62rem] font-bold uppercase tracking-[0.14em]", isActive ? "text-[#59675e]" : "text-[#c7bba9]")}>
-                {lens.metric}
-              </span>
-            </div>
-            <h2 className="mt-5 text-xl font-semibold leading-tight">{lens.label}</h2>
-            <p className={cn("mt-2 text-xs leading-5", isActive ? "text-[#405047]" : "text-[#d9cfbd]")}>{lens.description}</p>
+            <IconComponent className="h-4 w-4" aria-hidden />
+            <span className="min-w-0">
+              <span className="block text-base font-semibold leading-tight">{copy.title}</span>
+              <span className={cn("mt-1 block text-xs leading-5", isActive ? "text-[#405047]" : "text-[#d9cfbd]")}>{copy.detail}</span>
+            </span>
+            <span className={cn("col-span-2 w-fit border px-2 py-1 text-[0.58rem] font-bold uppercase tracking-[0.1em] sm:col-span-1", isActive ? "border-[#9d8f77] text-[#59675e]" : "border-[#4d594f] text-[#c7bba9]")}>
+              {copy.metric}
+            </span>
           </button>
         );
       })}
-    </section>
+      </div>
+    </nav>
   );
 }
 
@@ -430,8 +514,19 @@ function ActionQueue({
   decisions: Record<string, Decision>;
   onSelectAction: (actionId: string) => void;
 }) {
+  const activeAction = actions.find((action) => action.id === activeActionId) ?? actions[0];
+  const activeDecision = activeAction ? decisions[activeAction.id] : undefined;
+  const decisionTitle =
+    activeDecision === "approved"
+      ? "Approved in this demo"
+      : activeDecision === "needs_evidence"
+        ? "Evidence requested before approval"
+        : activeAction?.status === "Manual evidence needed"
+          ? "Request one more proof point before approval"
+          : `Approve: ${activeAction?.title ?? "Select the next action"}`;
+
   return (
-    <section className="border border-[#17211c] bg-[#fffaf0]">
+    <section id="relationship-os-actions" tabIndex={-1} className="scroll-mt-4 border border-[#17211c] bg-[#fffaf0] focus:outline-none">
       <div className="flex items-end justify-between gap-4 border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
         <div>
           <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Next steps</p>
@@ -439,6 +534,12 @@ function ActionQueue({
         </div>
         <p className="text-right text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">{actions.length} actions</p>
       </div>
+
+      {activeAction ? (
+        <div className="border-b border-[#cab99d] px-4 py-4">
+          <ActionCallout label="Decision" title={decisionTitle} detail={activeAction.summary} tone="decision" />
+        </div>
+      ) : null}
 
       <div className="divide-y divide-[#cab99d]">
         {actions.map((action) => {
@@ -648,6 +749,31 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
   );
 }
 
+function TabIntro({
+  eyebrow,
+  title,
+  detail,
+  meta,
+}: {
+  eyebrow: string;
+  title: string;
+  detail: string;
+  meta: string;
+}) {
+  return (
+    <div className="flex flex-col gap-3 border border-[#17211c] bg-[#fffaf0] px-4 py-4 md:flex-row md:items-end md:justify-between">
+      <div>
+        <p className="text-[0.66rem] font-bold uppercase tracking-[0.16em] text-[#657064]">{eyebrow}</p>
+        <h2 className="mt-1 text-3xl font-semibold leading-tight text-[#17211c]">{title}</h2>
+        <p className="mt-2 max-w-[76ch] text-sm leading-6 text-[#405047]">{detail}</p>
+      </div>
+      <p className="w-fit border border-[#9d8f77] bg-[#fbf4e7] px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">
+        {meta}
+      </p>
+    </div>
+  );
+}
+
 function RankingsPanel({ rankings }: { rankings: MentorRanking[] }) {
   return (
     <section className="border border-[#17211c] bg-[#fffaf0]">
@@ -705,6 +831,57 @@ function ActorProfile({ actor }: { actor: Actor }) {
         ))}
       </div>
     </article>
+  );
+}
+
+function ActorContextPanel({
+  selectedActors,
+  selectedAction,
+}: {
+  selectedActors: Actor[];
+  selectedAction: Action;
+}) {
+  return (
+    <section id="relationship-os-actors" tabIndex={-1} className="scroll-mt-4 border border-[#17211c] bg-[#fffaf0] focus:outline-none">
+      <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
+        <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Actor profile</p>
+        <h2 className="mt-1 text-2xl font-semibold leading-tight">Who this affects</h2>
+      </div>
+      <div className="grid gap-3 p-3">
+        <ActionCallout
+          label="Recommendation"
+          title={`Focus this move on ${selectedActors.map((actor) => actor.name).join(" + ")}`}
+          detail={`There are ${relationshipOsSnapshot.actors.length} mapped actors in the graph. For this decision, the strongest action is: ${selectedAction.summary}`}
+          tone="recommendation"
+        />
+        {selectedActors.map((actor) => (
+          <ActorProfile key={actor.id} actor={actor} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SignalFeedPanel({ selectedSignals }: { selectedSignals: Signal[] }) {
+  return (
+    <section id="relationship-os-signals" tabIndex={-1} className="scroll-mt-4 border border-[#17211c] bg-[#fffaf0] focus:outline-none">
+      <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
+        <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Signal feed</p>
+        <h2 className="mt-1 text-2xl font-semibold leading-tight">What the model reads</h2>
+      </div>
+      <div className="border-b border-[#cab99d] px-4 py-4">
+        <ActionCallout
+          label="Insight"
+          title={selectedSignals[0]?.label ?? "Prioritize the highest-confidence evidence"}
+          detail="Each recommendation links back to CSV or WhatsApp/TXT evidence, so the operator can approve the action or request missing evidence with context."
+        />
+      </div>
+      <div className="divide-y divide-[#cab99d]">
+        {relationshipOsSnapshot.signals.map((signal) => (
+          <SignalRow key={signal.id} signal={signal} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -914,6 +1091,8 @@ export default function RelationshipOSDemo() {
   const [csvEvidence, setCsvEvidence] = useState<CsvEvidenceState | null>(null);
   const [pastedEvidence, setPastedEvidence] = useState("");
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
+  const [supportingOpen, setSupportingOpen] = useState(false);
+  const [rawInfoOpen, setRawInfoOpen] = useState(false);
 
   const visibleActions = useMemo(() => {
     const scopedActions =
@@ -927,6 +1106,9 @@ export default function RelationshipOSDemo() {
   const selectedAction = visibleActions.find((action) => action.id === selectedActionId) ?? visibleActions[0];
   const selectedRelationship = getRelationshipById(selectedAction.relationshipId);
   const selectedActors = selectedAction.actorIds.map(getActorById);
+  const selectedSignals = selectedAction.signals
+    .map((signalId) => relationshipOsSnapshot.signals.find((signal) => signal.id === signalId))
+    .filter((signal): signal is Signal => Boolean(signal));
 
   function selectLens(lensId: LensId) {
     setActiveLens(lensId);
@@ -935,6 +1117,38 @@ export default function RelationshipOSDemo() {
     if (firstAction) {
       setSelectedActionId(firstAction.id);
     }
+  }
+
+  function scrollToSection(sectionId: string) {
+    window.setTimeout(() => {
+      const section = document.getElementById(sectionId);
+      section?.scrollIntoView({ block: "start" });
+
+      if (section instanceof HTMLElement) {
+        section.focus({ preventScroll: true });
+      }
+    }, 0);
+  }
+
+  function jumpToHeaderMetric(target: "actors" | "signals" | "actions") {
+    if (target === "actions") {
+      setActiveLens("relationships");
+      setSelectedActionId("action-atlas-priya");
+      scrollToSection("relationship-os-page");
+      return;
+    }
+
+    if (target === "signals") {
+      setActiveLens("evidence");
+      setSelectedActionId("action-atlas-priya");
+      scrollToSection("relationship-os-page");
+      return;
+    }
+
+    setActiveLens("relationships");
+    setSelectedActionId("action-atlas-priya");
+    setSupportingOpen(true);
+    scrollToSection("relationship-os-actors");
   }
 
   function recordDecision(actionId: string, decision: Decision) {
@@ -1033,8 +1247,8 @@ export default function RelationshipOSDemo() {
 
   return (
     <main className="min-h-screen bg-[#ede4d1] text-[#17211c]" style={{ fontFamily: 'Charter, "Iowan Old Style", "Hoefler Text", Georgia, serif' }}>
-      <div className="mx-auto flex max-w-[1500px] flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
-        <header className="grid gap-6 border border-[#17211c] bg-[#fffaf0] px-5 py-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+      <div className="mx-auto flex max-w-[1500px] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+        <header className="grid gap-4 border border-[#17211c] bg-[#fffaf0] px-4 py-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="border border-[#17211c] bg-[#17211c] px-2 py-1 text-[0.64rem] font-bold uppercase tracking-[0.14em] text-[#fffaf0]">
@@ -1044,99 +1258,205 @@ export default function RelationshipOSDemo() {
                 {relationshipOsSnapshot.ecosystemName}
               </span>
             </div>
-            <h1 className="mt-5 max-w-4xl text-5xl font-semibold leading-[0.95] tracking-normal md:text-7xl">
+            <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-[0.98] tracking-normal md:text-6xl">
               Relationship OS for ecosystem operators
             </h1>
-            <p className="mt-5 max-w-3xl text-base leading-7 text-[#405047] md:text-lg">
-              A focused operating surface that turns raw cohort evidence into mentor rankings, relationship next steps, and partner actions without replacing the existing EcosystemOS app.
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-[#405047] md:text-base">
+              Immediate tabs for actions, mentor ranking, partner intros, and evidence. Raw information is optional and stays out of the main flow.
             </p>
           </div>
           <div className="grid grid-cols-3 border border-[#9d8f77] bg-[#fbf4e7] text-center">
-            <Metric label="Actors" value={`${relationshipOsSnapshot.actors.length}`} detail="mapped" />
-            <Metric label="Signals" value={`${relationshipOsSnapshot.signals.length}`} detail="linked" />
-            <Metric label="Actions" value={`${relationshipOsSnapshot.actions.length}`} detail="queued" />
+            <HeaderMetricButton
+              label="Actors"
+              value={`${relationshipOsSnapshot.actors.length}`}
+              detail="mapped"
+              actionLabel="View actor insight"
+              onClick={() => jumpToHeaderMetric("actors")}
+            />
+            <HeaderMetricButton
+              label="Signals"
+              value={`${relationshipOsSnapshot.signals.length}`}
+              detail="linked"
+              actionLabel="View signal insight"
+              onClick={() => jumpToHeaderMetric("signals")}
+            />
+            <HeaderMetricButton
+              label="Actions"
+              value={`${relationshipOsSnapshot.actions.length}`}
+              detail="queued"
+              actionLabel="Open decision queue"
+              onClick={() => jumpToHeaderMetric("actions")}
+            />
           </div>
         </header>
 
         <LensBar activeLens={activeLens} onSelectLens={selectLens} />
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <ActionQueue actions={visibleActions} activeActionId={selectedAction.id} decisions={decisions} onSelectAction={setSelectedActionId} />
-          <SelectedInsightPanel
-            selectedAction={selectedAction}
-            selectedRelationship={selectedRelationship}
-            decisions={decisions}
-            onRecordDecision={recordDecision}
-          />
+        <section id="relationship-os-page" tabIndex={-1} className="scroll-mt-4 grid gap-5 focus:outline-none">
+          {activeLens === "relationships" ? (
+            <>
+              <TabIntro
+                eyebrow="Recommended actions"
+                title="Start with the highest-confidence move"
+                detail="This is the default value page: it tells an operator what to do next, why it matters, and whether to approve or request more evidence."
+                meta={`${visibleActions.length} actions`}
+              />
+              <section className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                <ActionQueue actions={visibleActions} activeActionId={selectedAction.id} decisions={decisions} onSelectAction={setSelectedActionId} />
+                <SelectedInsightPanel
+                  selectedAction={selectedAction}
+                  selectedRelationship={selectedRelationship}
+                  decisions={decisions}
+                  onRecordDecision={recordDecision}
+                />
+              </section>
+            </>
+          ) : null}
+
+          {activeLens === "mentor-ranking" ? (
+            <>
+              <TabIntro
+                eyebrow="Mentor ranking"
+                title="Deploy the right mentor first"
+                detail="The ranking page turns cohort evidence into a prioritized mentor list, with the best startup match and reasoning visible immediately."
+                meta={`${relationshipOsSnapshot.mentorRankings.length} mentors`}
+              />
+              <section className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                <RankingsPanel rankings={relationshipOsSnapshot.mentorRankings} />
+                <SelectedInsightPanel
+                  selectedAction={selectedAction}
+                  selectedRelationship={selectedRelationship}
+                  decisions={decisions}
+                  onRecordDecision={recordDecision}
+                />
+              </section>
+            </>
+          ) : null}
+
+          {activeLens === "partner-intros" ? (
+            <>
+              <TabIntro
+                eyebrow="Partner intros"
+                title="Only send intros with enough proof"
+                detail="This page keeps partner introductions practical: a clear recommendation, a confidence level, and an evidence request when the proof is not ready."
+                meta={`${visibleActions.length} intro action`}
+              />
+              <section className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                <ActionQueue actions={visibleActions} activeActionId={selectedAction.id} decisions={decisions} onSelectAction={setSelectedActionId} />
+                <SelectedInsightPanel
+                  selectedAction={selectedAction}
+                  selectedRelationship={selectedRelationship}
+                  decisions={decisions}
+                  onRecordDecision={recordDecision}
+                />
+              </section>
+            </>
+          ) : null}
+
+          {activeLens === "evidence" ? (
+            <>
+              <TabIntro
+                eyebrow="Evidence"
+                title="See why the recommendations are credible"
+                detail="The evidence page shows the model-readable signals behind the tabs. It is proof for the operator, not a required setup step."
+                meta={`${relationshipOsSnapshot.signals.length} signals`}
+              />
+              <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+                <SignalFeedPanel selectedSignals={selectedSignals} />
+                <section className="border border-[#17211c] bg-[#fffaf0]">
+                  <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
+                    <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Evidence sources</p>
+                    <h2 className="mt-1 text-2xl font-semibold leading-tight">What has been processed</h2>
+                  </div>
+                  <div className="grid gap-3 p-3">
+                    {relationshipOsSnapshot.evidenceSources.map((source) => (
+                      <SourceBadge key={source.id} source={source} />
+                    ))}
+                  </div>
+                </section>
+              </section>
+            </>
+          ) : null}
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-          <RelationshipMap selectedAction={selectedAction} selectedRelationship={selectedRelationship} />
-          <div className="grid gap-6">
-            {activeLens === "mentor-ranking" ? (
-              <RankingsPanel rankings={relationshipOsSnapshot.mentorRankings} />
-            ) : (
-              <section className="border border-[#17211c] bg-[#fffaf0]">
-                <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
-                  <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Actor profile</p>
-                  <h2 className="mt-1 text-2xl font-semibold leading-tight">Selected context</h2>
-                </div>
-                <div className="grid gap-3 p-3">
-                  {selectedActors.map((actor) => (
-                    <ActorProfile key={actor.id} actor={actor} />
-                  ))}
-                </div>
-              </section>
-            )}
+        <details
+          id="relationship-os-supporting"
+          open={supportingOpen}
+          onToggle={(event) => setSupportingOpen(event.currentTarget.open)}
+          className="border border-[#17211c] bg-[#fffaf0]"
+        >
+          <summary className="cursor-pointer list-none border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4 marker:hidden">
+            <span className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+              <span>
+                <span className="block text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Details and credibility</span>
+                <span className="mt-1 block text-2xl font-semibold leading-tight text-[#17211c]">Proof behind the current tab</span>
+              </span>
+              <span className="text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">
+                {supportingOpen ? "Hide details" : "Open map, actors, and data"}
+              </span>
+            </span>
+          </summary>
+          <div className="grid gap-5 p-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
+            <RelationshipMap selectedAction={selectedAction} selectedRelationship={selectedRelationship} />
+            <div className="grid gap-5">
+              <ActorContextPanel selectedActors={selectedActors} selectedAction={selectedAction} />
+              {activeLens !== "evidence" ? <SignalFeedPanel selectedSignals={selectedSignals} /> : null}
+            </div>
+          </div>
+        </details>
 
-            <section className="border border-[#17211c] bg-[#fffaf0]">
-              <div className="border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4">
-                <p className="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Signal feed</p>
-                <h2 className="mt-1 text-2xl font-semibold leading-tight">What the model reads</h2>
+        <details
+          id="relationship-os-raw-info"
+          open={rawInfoOpen}
+          onToggle={(event) => setRawInfoOpen(event.currentTarget.open)}
+          className="border border-[#17211c] bg-[#fffaf0]"
+        >
+          <summary className="cursor-pointer list-none border-b border-[#9d8f77] bg-[#f7f1e5] px-4 py-4 marker:hidden">
+            <span className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+              <span>
+                <span className="block text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[#657064]">Optional add-on</span>
+                <span className="mt-1 block text-2xl font-semibold leading-tight text-[#17211c]">Add raw information later</span>
+              </span>
+              <span className="text-xs font-bold uppercase tracking-[0.1em] text-[#59675e]">
+                {rawInfoOpen ? "Hide upload tools" : "Open CSV and paste tools"}
+              </span>
+            </span>
+          </summary>
+          <div className="grid gap-5 p-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <IngestionPanel
+              queuedEvidenceSource={queuedEvidenceSource}
+              evidenceProcessed={evidenceProcessed}
+              isProcessingEvidence={isProcessingEvidence}
+              processRunCount={processRunCount}
+              processedCsvSummary={processedCsvSummary}
+              processingError={processingError}
+              csvEvidence={csvEvidence}
+              pastedEvidence={pastedEvidence}
+              onQueueEvidence={queueEvidence}
+              onChangePastedEvidence={changePastedEvidence}
+              onUploadCsv={uploadCsv}
+              onLoadSampleCsv={loadSampleCsv}
+              onProcessEvidence={processEvidence}
+            />
+
+            <aside className="border border-[#17211c] bg-[#fffaf0] px-4 py-4">
+              <div className="flex h-10 w-10 items-center justify-center border border-[#17211c] bg-[#17211c] text-[#fffaf0]">
+                <ShieldCheck className="h-5 w-5" aria-hidden />
               </div>
-              <div className="divide-y divide-[#cab99d]">
-                {relationshipOsSnapshot.signals.map((signal) => (
-                  <SignalRow key={signal.id} signal={signal} />
+              <h2 className="mt-5 text-2xl font-semibold leading-tight">Backend-ready contract</h2>
+              <p className="mt-3 text-sm leading-6 text-[#405047]">
+                The mock snapshot is shaped around Firebase collections and callable functions, so the route can move from local demo data to a real Google-backed store.
+              </p>
+              <div className="mt-5 space-y-2">
+                {relationshipOsFirebaseContract.collections.slice(0, 4).map((collection) => (
+                  <p key={collection} className="break-words border border-[#cab99d] bg-[#fbf4e7] px-3 py-2 text-xs font-bold text-[#405047]">
+                    {collection}
+                  </p>
                 ))}
               </div>
-            </section>
+            </aside>
           </div>
-        </section>
-
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <IngestionPanel
-            queuedEvidenceSource={queuedEvidenceSource}
-            evidenceProcessed={evidenceProcessed}
-            isProcessingEvidence={isProcessingEvidence}
-            processRunCount={processRunCount}
-            processedCsvSummary={processedCsvSummary}
-            processingError={processingError}
-            csvEvidence={csvEvidence}
-            pastedEvidence={pastedEvidence}
-            onQueueEvidence={queueEvidence}
-            onChangePastedEvidence={changePastedEvidence}
-            onUploadCsv={uploadCsv}
-            onLoadSampleCsv={loadSampleCsv}
-            onProcessEvidence={processEvidence}
-          />
-
-          <aside className="border border-[#17211c] bg-[#fffaf0] px-4 py-4">
-            <div className="flex h-10 w-10 items-center justify-center border border-[#17211c] bg-[#17211c] text-[#fffaf0]">
-              <ShieldCheck className="h-5 w-5" aria-hidden />
-            </div>
-            <h2 className="mt-5 text-2xl font-semibold leading-tight">Backend-ready contract</h2>
-            <p className="mt-3 text-sm leading-6 text-[#405047]">
-              The mock snapshot is shaped around Firebase collections and callable functions, so the route can move from local demo data to a real Google-backed store.
-            </p>
-            <div className="mt-5 space-y-2">
-              {relationshipOsFirebaseContract.collections.slice(0, 4).map((collection) => (
-                <p key={collection} className="break-words border border-[#cab99d] bg-[#fbf4e7] px-3 py-2 text-xs font-bold text-[#405047]">
-                  {collection}
-                </p>
-              ))}
-            </div>
-          </aside>
-        </section>
+        </details>
 
         <footer className="flex flex-col gap-3 border border-[#17211c] bg-[#17211c] px-5 py-4 text-[#fffaf0] md:flex-row md:items-center md:justify-between">
           <p className="text-sm font-semibold">Cohort Atlas, Relationship OS comparison surface</p>
