@@ -39,6 +39,17 @@ import {
 type Icon = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 type Decision = "approved" | "needs_evidence";
 
+const MOCK_WHATSAPP_CSV_PATH = "/demo/relationship-os-whatsapp-sync.csv";
+
+type MockCsvState = {
+  filename: string;
+  rowCount: number;
+  mentorCount: number;
+  startupCount: number;
+  blockerCount: number;
+  preview: string[];
+};
+
 const sourceIcons: Record<string, Icon> = {
   "whatsapp-export": MessageCircle,
   "csv-may-sync": Database,
@@ -86,6 +97,64 @@ function actorInitials(name: string) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+function parseCsvRows(csvText: string) {
+  const rows: string[][] = [];
+  let cell = "";
+  let row: string[] = [];
+  let inQuotes = false;
+
+  for (let index = 0; index < csvText.length; index += 1) {
+    const char = csvText[index];
+    const next = csvText[index + 1];
+
+    if (char === '"' && next === '"') {
+      cell += '"';
+      index += 1;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      row.push(cell.trim());
+      cell = "";
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") index += 1;
+      row.push(cell.trim());
+      if (row.some(Boolean)) rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += char;
+    }
+  }
+
+  row.push(cell.trim());
+  if (row.some(Boolean)) rows.push(row);
+
+  const [headers = [], ...records] = rows;
+
+  return records.map((record) =>
+    headers.reduce<Record<string, string>>((parsed, header, headerIndex) => {
+      parsed[header] = record[headerIndex] ?? "";
+      return parsed;
+    }, {}),
+  );
+}
+
+function summarizeMockCsv(filename: string, csvText: string): MockCsvState {
+  const rows = parseCsvRows(csvText);
+  const mentors = new Set(rows.map((row) => row.mentor_id).filter(Boolean));
+  const startups = new Set(rows.map((row) => row.startup_id).filter(Boolean));
+  const blockers = rows.filter((row) => row.blockers_identified?.trim()).length;
+
+  return {
+    filename,
+    rowCount: rows.length,
+    mentorCount: mentors.size,
+    startupCount: startups.size,
+    blockerCount: blockers,
+    preview: rows.slice(0, 3).map((row) => `${row.mentor_name} to ${row.startup_name}: ${row.blockers_identified}`),
+  };
 }
 
 function getHealthColor(score: number) {
@@ -497,12 +566,16 @@ function ActorProfile({ actor }: { actor: Actor }) {
 function IngestionPanel({
   queuedEvidenceSource,
   evidenceProcessed,
+  mockCsv,
   onQueueEvidence,
+  onLoadMockCsv,
   onProcessEvidence,
 }: {
   queuedEvidenceSource: string | null;
   evidenceProcessed: boolean;
+  mockCsv: MockCsvState | null;
   onQueueEvidence: (sourceId: string) => void;
+  onLoadMockCsv: () => void;
   onProcessEvidence: () => void;
 }) {
   const queuedSource = relationshipOsSnapshot.evidenceSources.find((source) => source.id === queuedEvidenceSource);
@@ -531,12 +604,49 @@ function IngestionPanel({
         })}
       </div>
 
+      <div className="grid gap-3 border-t border-[#9d8f77] bg-[#fbf4e7] px-4 py-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-[#17211c]">
+            {mockCsv
+              ? `${mockCsv.filename} loaded: ${mockCsv.rowCount} WhatsApp CSV rows across ${mockCsv.mentorCount} mentors and ${mockCsv.startupCount} startups.`
+              : "Load the mock WhatsApp CSV to run the demo from a real file-shaped evidence packet."}
+          </p>
+          {mockCsv ? (
+            <div className="mt-3 grid gap-2">
+              {mockCsv.preview.map((line) => (
+                <p key={line} className="border border-[#cab99d] bg-[#fffaf0] px-3 py-2 text-xs leading-5 text-[#405047]">
+                  {line}
+                </p>
+              ))}
+            </div>
+          ) : null}
+          <a
+            className="mt-3 inline-flex border border-[#9d8f77] bg-[#fffaf0] px-2 py-1 text-[0.64rem] font-bold uppercase tracking-[0.1em] text-[#59675e] hover:border-[#17211c] hover:text-[#17211c]"
+            href={MOCK_WHATSAPP_CSV_PATH}
+          >
+            Open sample CSV
+          </a>
+        </div>
+        <button
+          type="button"
+          className="flex min-h-11 items-center justify-center gap-2 border border-[#17211c] bg-[#fffaf0] px-5 py-2 text-sm font-bold text-[#17211c] hover:bg-[#17211c] hover:text-[#fffaf0]"
+          onClick={onLoadMockCsv}
+        >
+          <FileText className="h-4 w-4" aria-hidden />
+          {mockCsv ? "Reload mock CSV" : "Load mock CSV"}
+        </button>
+      </div>
+
       <div className={cn("grid gap-3 border-t border-[#9d8f77] px-4 py-4 md:grid-cols-[minmax(0,1fr)_auto]", evidenceProcessed ? "bg-[#dce6d8]" : "bg-[#fbf4e7]")}>
         <div className="min-w-0">
           <p className="text-sm font-bold text-[#17211c]">
             {evidenceProcessed
-              ? "Raw information processed into relationship, mentor ranking, and partner intro signals."
-              : queuedSource
+              ? mockCsv
+                ? `${mockCsv.rowCount} WhatsApp CSV rows processed into relationship, mentor ranking, and partner intro signals.`
+                : "Raw information processed into relationship, mentor ranking, and partner intro signals."
+              : mockCsv
+                ? `${mockCsv.filename} is ready to process.`
+                : queuedSource
                 ? `${queuedSource.title} queued for extraction.`
                 : "Queue a source or process the full demo packet."}
           </p>
@@ -562,6 +672,7 @@ export default function RelationshipOSDemo() {
   const [selectedActionId, setSelectedActionId] = useState("action-atlas-priya");
   const [queuedEvidenceSource, setQueuedEvidenceSource] = useState<string | null>("whatsapp-export");
   const [evidenceProcessed, setEvidenceProcessed] = useState(false);
+  const [mockCsv, setMockCsv] = useState<MockCsvState | null>(null);
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
 
   const visibleActions = useMemo(() => {
@@ -588,6 +699,14 @@ export default function RelationshipOSDemo() {
 
   function recordDecision(actionId: string, decision: Decision) {
     setDecisions((current) => ({ ...current, [actionId]: decision }));
+  }
+
+  async function loadMockCsv() {
+    const response = await fetch(MOCK_WHATSAPP_CSV_PATH);
+    const csvText = await response.text();
+    setMockCsv(summarizeMockCsv("relationship-os-whatsapp-sync.csv", csvText));
+    setQueuedEvidenceSource("csv-may-sync");
+    setEvidenceProcessed(false);
   }
 
   return (
@@ -666,7 +785,9 @@ export default function RelationshipOSDemo() {
           <IngestionPanel
             queuedEvidenceSource={queuedEvidenceSource}
             evidenceProcessed={evidenceProcessed}
+            mockCsv={mockCsv}
             onQueueEvidence={setQueuedEvidenceSource}
+            onLoadMockCsv={loadMockCsv}
             onProcessEvidence={() => setEvidenceProcessed(true)}
           />
 
