@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Sparkles, Star, PersonAdd, RefreshCw, Filter, MessageCircle
+  Sparkles, Star, UserPlus, RefreshCw, Filter, MessageCircle
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import PageHeader from "@/components/shared/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -222,7 +221,7 @@ export default function MatchesPage() {
                             "ring-2 ring-green-500 ring-offset-2"
                         )}
                       >
-                        <PersonAdd className="w-4 h-4" />
+                        <UserPlus className="w-4 h-4" />
                         {selectedMentor === mentor.id ? "Added!" : "Add Mentor"}
                       </motion.button>
                       <Button

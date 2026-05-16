@@ -60,6 +60,7 @@ const config: Config = {
         "on-surface-variant": "#434656",
         "on-error": "#ffffff",
         "secondary-fixed-dim": "#ddb8ff",
+        "success-green": "#00B42A",
         // Deprecated but using for compatibility
         border: "#c3c5d9",
         input: "#f8f9ff",
