@@ -1,4 +1,4 @@
-import { FileUp, Upload } from 'lucide-react';
+import { FileUp, Play, Upload } from 'lucide-react';
 import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { parseCohortCsv } from '../domain/csv';
 import type { CohortSyncRow } from '../domain/types';
@@ -17,12 +17,14 @@ function parseAndSend(csvText: string, onRows: (rows: CohortSyncRow[]) => void, 
   onRows(parsed.rows);
 }
 
+const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#17211c]';
+
 export function IngestionPanel({ onRows, onError }: IngestionPanelProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoadingSample, setIsLoadingSample] = useState(false);
 
-  async function handleSampleLoad() {
+  async function processSampleCsv() {
     setIsLoadingSample(true);
     try {
       const response = await fetch('/monthly-sync-sample.csv');
@@ -69,7 +71,7 @@ export function IngestionPanel({ onRows, onError }: IngestionPanelProps) {
 
   return (
     <section className="border border-[#9d8f77] bg-[#fffaf0] p-5">
-      <div className="mb-5 flex items-start justify-between gap-4">
+      <div className="mb-5">
         <div>
           <p className="ui-sans text-xs font-semibold uppercase tracking-[0.14em] text-[#6c715f]">
             Monthly ingestion
@@ -78,12 +80,21 @@ export function IngestionPanel({ onRows, onError }: IngestionPanelProps) {
         </div>
         <button
           type="button"
-          onClick={() => void handleSampleLoad()}
+          onClick={() => void processSampleCsv()}
           disabled={isLoadingSample}
-          className="ui-sans inline-flex items-center gap-2 border border-[#17211c] bg-[#f7f1e5] px-3 py-2 text-sm font-semibold text-[#17211c] transition hover:bg-[#ede4d1] disabled:cursor-wait disabled:opacity-60"
+          className={`ui-sans mt-5 inline-flex w-full items-center justify-center gap-2 border border-[#17211c] bg-[#17211c] px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-[#f7f1e5] transition hover:bg-[#2b382f] disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
+        >
+          <Play size={16} strokeWidth={2.2} aria-hidden="true" />
+          Process Raw Information
+        </button>
+        <button
+          type="button"
+          onClick={() => void processSampleCsv()}
+          disabled={isLoadingSample}
+          className={`ui-sans mt-3 inline-flex w-full items-center justify-center gap-2 border border-[#9d8f77] bg-[#f7f1e5] px-3 py-2 text-sm font-semibold text-[#17211c] transition hover:bg-[#ede4d1] disabled:cursor-wait disabled:opacity-60 ${focusRing}`}
         >
           <Upload size={16} strokeWidth={2} aria-hidden="true" />
-          {isLoadingSample ? 'Loading' : 'Load sample'}
+          {isLoadingSample ? 'Loading sample' : 'Use sample CSV'}
         </button>
       </div>
 
@@ -98,16 +109,22 @@ export function IngestionPanel({ onRows, onError }: IngestionPanelProps) {
         <FileUp size={30} strokeWidth={1.8} className="text-[#4d5d53]" aria-hidden="true" />
         <p className="mt-4 text-2xl font-semibold leading-tight">Drop monthly sync CSV</p>
         <p className="ui-sans mt-2 max-w-sm text-sm leading-6 text-[#59675e]">
-          Parser expects mentor, startup, sync hours, milestones, blockers, and confidence columns.
+          Or drop a CSV here. Every path runs the same raw-information processor.
         </p>
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="ui-sans mt-5 border border-[#17211c] bg-[#17211c] px-4 py-2 text-sm font-semibold uppercase tracking-[0.08em] text-[#f7f1e5] transition hover:bg-[#2b382f]"
+          className={`ui-sans mt-5 border border-[#17211c] bg-[#f7f1e5] px-4 py-2 text-sm font-semibold uppercase tracking-[0.08em] text-[#17211c] transition hover:bg-[#ede4d1] ${focusRing}`}
         >
           Choose CSV
         </button>
-        <input ref={inputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleInputChange} />
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".csv,text/csv"
+          className={`sr-only ${focusRing}`}
+          onChange={handleInputChange}
+        />
       </div>
     </section>
   );
