@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,230 +6,138 @@
 
 @layer base {
   :root {
-    --background: 222 47% 5%;
-    --foreground: 210 40% 98%;
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 263 70% 58%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 263 70% 58%;
-    --radius: 0.75rem;
+    /* X Combinator — YC-style dark tokens */
+    --background: 0 0% 6%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 95%;
+
+    /* YC Orange: #F26522 */
+    --primary: 21 90% 54%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 13%;
+    --secondary-foreground: 0 0% 80%;
+
+    --muted: 0 0% 13%;
+    --muted-foreground: 0 0% 50%;
+
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 95%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 16%;
+    --input: 0 0% 13%;
+    --ring: 21 90% 54%;
+
+    --radius: 0.5rem;
   }
 }
-
-/* Override friend's light-mode Material colors to work in dark mode */
-.bg-surface { background-color: hsl(222 47% 5%) !important; }
-.bg-surface-container-low { background-color: hsl(222 47% 8%) !important; }
-.bg-surface-container-lowest { background-color: hsl(222 47% 6%) !important; }
-.bg-surface-container { background-color: hsl(222 47% 10%) !important; }
-.text-on-surface { color: hsl(210 40% 98%) !important; }
-.text-on-surface-variant { color: hsl(215 20% 65%) !important; }
-.text-primary { color: #a78bfa !important; }
-.bg-primary-container { background-color: #7C3AED !important; }
-.text-on-primary { color: #ffffff !important; }
-.text-on-primary-container { color: #e9d5ff !important; }
-.border-outline-variant { border-color: rgba(255,255,255,0.1) !important; }
-.bg-inverse-surface { background-color: hsl(222 47% 12%) !important; }
-.bg-white { background-color: hsl(222 47% 8%) !important; }
-.shadow-\[0px_4px_20px_rgba\(31\,41\,55\,0\.08\)\] { box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important; }
-.shadow-\[0px_32px_80px_rgba\(31\,41\,55\,0\.12\)\] { box-shadow: 0 32px 80px rgba(0,0,0,0.5) !important; }
 
 @layer base {
-  * {
-    @apply border-border;
+  * { @apply border-border; }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
+
   body {
-    @apply bg-background text-foreground font-sans;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+    letter-spacing: -0.01em;
   }
+
+  h1, h2, h3, h4 { letter-spacing: -0.02em; }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: hsl(222 47% 8%);
-}
-::-webkit-scrollbar-thumb {
-  background: hsl(263 70% 40%);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(263 70% 58%);
-}
+/* ─── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(242,101,34,0.40); }
 
-/* Glassmorphism utility */
-.glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glass-card {
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-/* Gradient text */
+/* ─── Gradient text — YC orange, used sparingly ─────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #7C3AED 0%, #2563EB 50%, #06B6D4 100%);
+  background: linear-gradient(135deg, #F5832A 0%, #F26522 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .gradient-text-green {
-  background: linear-gradient(135deg, #10B981 0%, #06B6D4 100%);
+  background: linear-gradient(135deg, #34D399 0%, #10B981 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-.material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-}
-
-.custom-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.custom-scroll::-webkit-scrollbar-thumb {
-  background: #e6eeff;
-  border-radius: 10px;
-}
-
-.progress-bar-shine {
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-  background-size: 200% 100%;
-  animation: shine 1.5s infinite;
-}
-
-@keyframes shine {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-/* Glow effects */
-.glow-purple {
-  box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
-}
-
-.glow-blue {
-  box-shadow: 0 0 20px rgba(37, 99, 235, 0.3);
-}
-
-.glow-green {
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
-}
-
-/* Animated gradient border */
-.gradient-border {
-  position: relative;
-  background: linear-gradient(hsl(222 47% 8%), hsl(222 47% 8%)) padding-box,
-              linear-gradient(135deg, #7C3AED, #2563EB, #06B6D4) border-box;
-  border: 1px solid transparent;
-}
-
-/* Node styles for React Flow */
-.react-flow__node-startup {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(37, 99, 235, 0.2));
-  border: 1px solid rgba(124, 58, 237, 0.5);
-  border-radius: 12px;
-  padding: 10px 16px;
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
-  min-width: 120px;
-  text-align: center;
-}
-
-.react-flow__node-mentor {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2));
-  border: 1px solid rgba(16, 185, 129, 0.5);
-  border-radius: 12px;
-  padding: 10px 16px;
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
-  min-width: 120px;
-  text-align: center;
-}
-
-.react-flow__node-programme {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.2));
-  border: 1px solid rgba(245, 158, 11, 0.5);
-  border-radius: 12px;
-  padding: 10px 16px;
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
-  min-width: 120px;
-  text-align: center;
-}
-
-.react-flow__node-investor {
-  background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(124, 58, 237, 0.2));
-  border: 1px solid rgba(236, 72, 153, 0.5);
-  border-radius: 12px;
-  padding: 10px 16px;
-  color: white;
-  font-size: 12px;
-  font-weight: 600;
-  min-width: 120px;
-  text-align: center;
-}
-
-.react-flow__edge-path {
-  stroke-width: 2;
-}
-
-.react-flow__background {
-  background-color: hsl(222 47% 5%);
-}
-
-/* Shimmer loading effect */
+/* ─── Shimmer ───────────────────────────────────────────────────────────── */
 .shimmer {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.03) 25%,
-    rgba(255, 255, 255, 0.08) 50%,
-    rgba(255, 255, 255, 0.03) 75%
+    rgba(255,255,255,0.04) 0%,
+    rgba(255,255,255,0.09) 50%,
+    rgba(255,255,255,0.04) 100%
   );
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
-/* Score ring */
+/* ─── Glass — only for overlay panels ──────────────────────────────────── */
+.glass-card {
+  background: rgba(20,20,20,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.09);
+}
+
+/* ─── Input focus ───────────────────────────────────────────────────────── */
+.glass-input:focus {
+  border-color: rgba(242,101,34,0.5) !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(242,101,34,0.10);
+}
+
+/* ─── React Flow ────────────────────────────────────────────────────────── */
+.react-flow__background { background-color: hsl(var(--background)); }
+.react-flow__edge-path { stroke-width: 1.5; }
+
+.react-flow__node-startup,
+.react-flow__node-mentor,
+.react-flow__node-programme,
+.react-flow__node-investor {
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: hsl(var(--foreground));
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 120px;
+  text-align: center;
+}
+
+.react-flow__node-startup   { background: rgba(242,101,34,0.12); border: 1px solid rgba(242,101,34,0.35); }
+.react-flow__node-mentor    { background: rgba(16,185,129,0.10);  border: 1px solid rgba(16,185,129,0.30); }
+.react-flow__node-programme { background: rgba(245,158,11,0.10);  border: 1px solid rgba(245,158,11,0.30); }
+.react-flow__node-investor  { background: rgba(236,72,153,0.10);  border: 1px solid rgba(236,72,153,0.30); }
+
+/* ─── Score ring ────────────────────────────────────────────────────────── */
 .score-ring {
   background: conic-gradient(
     from 0deg,
-    #7C3AED var(--score-percent),
-    rgba(255,255,255,0.1) var(--score-percent)
+    #F26522 var(--score-percent),
+    rgba(255,255,255,0.08) var(--score-percent)
   );
 }

@@ -6,13 +6,13 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "EcosystemOS AI – Intelligent Ecosystem Relationship Orchestration",
+  title: "X Combinator – AI-Powered Ecosystem Relationship Platform",
   description:
-    "AI-powered platform that automates relationships between startups, mentors, investors, and accelerators. Verify startups, match mentors, track ecosystem health.",
-  keywords: ["ecosystem", "startups", "mentors", "AI", "accelerator", "innovation"],
+    "X Combinator automates relationships between startups, mentors, investors, and accelerators. Verify startups, match mentors, track ecosystem health with AI.",
+  keywords: ["x combinator", "ecosystem", "startups", "mentors", "AI", "accelerator", "innovation"],
   openGraph: {
-    title: "EcosystemOS AI",
-    description: "Intelligent Ecosystem Relationship Orchestration Platform",
+    title: "X Combinator",
+    description: "AI-Powered Ecosystem Relationship Platform",
     type: "website",
   },
 };

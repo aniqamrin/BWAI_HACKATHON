@@ -100,18 +100,18 @@ useEffect(() => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 rounded-xl border border-violet-500/20 bg-gradient-to-r from-violet-600/10 to-blue-600/10 p-4 flex items-center gap-3"
+          className="mb-5 rounded-lg border border-white/[0.08] bg-card p-4 flex items-center gap-4"
         >
-          <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center flex-shrink-0">
-            <Brain className="w-4 h-4 text-violet-400" />
+          <div className="w-8 h-8 rounded bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+            <Brain className="w-4 h-4 text-primary" />
           </div>
           <div className="flex-1">
-            <p className="text-xs text-violet-400 font-medium mb-0.5">AI Ecosystem Intelligence</p>
+            <p className="text-[10px] text-primary font-semibold mb-0.5 uppercase tracking-[0.08em]">X Combinator AI Intelligence</p>
             <p className="text-sm text-foreground">{insights.headline}</p>
           </div>
-          <div className="text-right flex-shrink-0">
-            <p className="text-2xl font-bold gradient-text">{insights.ecosystem_health_score}</p>
-            <p className="text-xs text-muted-foreground">Health Score</p>
+          <div className="text-right flex-shrink-0 pl-4 border-l border-white/[0.08]">
+            <p className="text-2xl font-bold text-foreground">{insights.ecosystem_health_score}</p>
+            <p className="text-[11px] text-muted-foreground">Health Score</p>
           </div>
         </motion.div>
       )}

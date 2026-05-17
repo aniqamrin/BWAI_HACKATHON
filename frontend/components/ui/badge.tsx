@@ -7,17 +7,16 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary/20 text-primary",
-        secondary: "border-transparent bg-secondary text-secondary-foreground",
-        destructive: "border-transparent bg-destructive/20 text-destructive",
-        outline: "border-white/20 text-foreground",
-        success: "border-green-500/30 bg-green-500/20 text-green-400",
-        warning: "border-yellow-500/30 bg-yellow-500/20 text-yellow-400",
-        danger: "border-red-500/30 bg-red-500/20 text-red-400",
-        info: "border-blue-500/30 bg-blue-500/20 text-blue-400",
-        purple: "border-purple-500/30 bg-purple-500/20 text-purple-400",
-        cyan: "border-cyan-500/30 bg-cyan-500/20 text-cyan-400",
-        warning: "border-yellow-500/30 bg-yellow-500/20 text-yellow-400",
+        default: "border-white/[0.10] bg-primary/15 text-primary",
+        secondary: "border-white/[0.08] bg-white/[0.06] text-muted-foreground",
+        destructive: "border-red-500/20 bg-red-500/10 text-red-400",
+        outline: "border-white/[0.12] text-foreground",
+        success: "border-green-500/20 bg-green-500/10 text-green-400",
+        warning: "border-yellow-500/20 bg-yellow-500/10 text-yellow-400",
+        danger: "border-red-500/20 bg-red-500/10 text-red-400",
+        info: "border-blue-500/20 bg-blue-500/10 text-blue-400",
+        purple: "border-violet-500/20 bg-violet-500/10 text-violet-400",
+        cyan: "border-cyan-500/20 bg-cyan-500/10 text-cyan-400",
       },
     },
     defaultVariants: {

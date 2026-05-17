@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState, useRef } from "react";
+import { motion } from "framer-motion";
 import {
-  Sparkles, Star, RefreshCw, SlidersHorizontal,
+  Sparkles, Star, RefreshCw,
   CheckCircle2, Brain, TrendingUp, MapPin, Briefcase,
-  ChevronDown, GitBranch, Building2, Users, DollarSign,
+  ChevronDown, GitBranch, Building2, DollarSign,
+  FileText, X, AlertCircle,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import PageHeader from "@/components/shared/PageHeader";
@@ -14,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { matchApi, startupsApi, relationshipsApi } from "@/lib/api";
 import { toast } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
+
+type PageTab = "selector" | "csv";
 
 type MatchMode = "mentor" | "programme" | "investor";
 
@@ -42,7 +45,20 @@ function ArcScore({ score, isTop }: { score: number; isTop?: boolean }) {
   );
 }
 
+function parseCSV(text: string): Record<string, string>[] {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
+  return lines.slice(1).map(line => {
+    const vals = line.split(",").map(v => v.trim().replace(/^"|"$/g, ""));
+    const row: Record<string, string> = {};
+    headers.forEach((h, i) => { row[h] = vals[i] ?? ""; });
+    return row;
+  }).filter(row => Object.values(row).some(v => v));
+}
+
 export default function MatchesPage() {
+  const [pageTab, setPageTab] = useState<PageTab>("selector");
   const [startups, setStartups] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [mode, setMode] = useState<MatchMode>("mentor");
@@ -51,6 +67,14 @@ export default function MatchesPage() {
   const [startupsLoading, setStartupsLoading] = useState(true);
   const [creating, setCreating] = useState<string | null>(null);
   const [created, setCreated] = useState<Set<string>>(new Set());
+
+  // CSV state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvRows, setCsvRows] = useState<Record<string, string>[]>([]);
+  const [csvResults, setCsvResults] = useState<{ row: Record<string, string>; matches: any[] }[]>([]);
+  const [csvLoading, setCsvLoading] = useState(false);
+  const [csvDone, setCsvDone] = useState(false);
 
   // Load startups on mount
   useEffect(() => {
@@ -121,6 +145,58 @@ export default function MatchesPage() {
     }
   };
 
+  const handleCsvFile = (file: File) => {
+    setCsvFile(file);
+    setCsvResults([]);
+    setCsvDone(false);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const rows = parseCSV(text);
+      setCsvRows(rows);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleCsvDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith(".csv")) handleCsvFile(file);
+    else toast({ title: "Please drop a CSV file", variant: "error" });
+  };
+
+  const runCsvMatch = async () => {
+    if (!csvRows.length) return;
+    setCsvLoading(true);
+    setCsvResults([]);
+    const results: { row: Record<string, string>; matches: any[] }[] = [];
+    for (const row of csvRows) {
+      try {
+        const startupId = row.id || row.startup_id || "";
+        let matchRes: any;
+        if (startupId) {
+          matchRes = await matchApi.matchMentors(startupId, 3) as any;
+          results.push({ row, matches: matchRes.data?.matches || [] });
+        } else {
+          // No ID — use mock/name-based fallback via first startup
+          const fallbackId = startups[0]?.id;
+          if (fallbackId) {
+            matchRes = await matchApi.matchMentors(fallbackId, 3) as any;
+            results.push({ row, matches: matchRes.data?.matches || [] });
+          } else {
+            results.push({ row, matches: [] });
+          }
+        }
+      } catch {
+        results.push({ row, matches: [] });
+      }
+    }
+    setCsvResults(results);
+    setCsvLoading(false);
+    setCsvDone(true);
+    toast({ title: `Matched ${results.length} startups from CSV`, variant: "success" });
+  };
+
   const selectedStartup = startups.find(s => s.id === selectedId);
 
   return (
@@ -131,6 +207,178 @@ export default function MatchesPage() {
         icon={Sparkles}
         badge={matches.length > 0 ? `${matches.length} matches` : undefined}
       />
+
+      {/* Page tab switcher */}
+      <div className="flex rounded-lg border border-white/[0.08] bg-white/[0.03] p-0.5 gap-0.5 w-fit mb-6">
+        {([["selector", "Startup Selector"], ["csv", "CSV Upload"]] as const).map(([val, label]) => (
+          <button
+            key={val}
+            onClick={() => setPageTab(val)}
+            className={cn(
+              "px-4 py-1.5 rounded-md text-[13px] font-medium transition-all",
+              pageTab === val
+                ? "bg-primary text-white"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── CSV Upload Tab ───────────────────────────────────── */}
+      {pageTab === "csv" && (
+        <div className="space-y-6">
+          {/* Drop zone */}
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleCsvDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className="border-2 border-dashed border-white/[0.12] hover:border-primary/40 rounded-xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors group"
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCsvFile(f); }}
+            />
+            <div className="w-12 h-12 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center group-hover:border-primary/30 transition-colors">
+              <FileText className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+            </div>
+            {csvFile ? (
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground">{csvFile.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{csvRows.length} startup row{csvRows.length !== 1 ? "s" : ""} detected</p>
+              </div>
+            ) : (
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground">Drop your CSV here or click to browse</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Columns: <span className="font-mono text-foreground/70">id, startup_name, industry, stage, country</span>
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* CSV preview */}
+          {csvRows.length > 0 && !csvDone && (
+            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+              <div className="px-5 py-3 border-b border-white/[0.08] flex items-center justify-between">
+                <p className="text-[13px] font-semibold">{csvRows.length} startups ready for matching</p>
+                <button
+                  onClick={() => { setCsvFile(null); setCsvRows([]); }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="overflow-x-auto max-h-48">
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="border-b border-white/[0.06]">
+                      {Object.keys(csvRows[0]).map(h => (
+                        <th key={h} className="text-left px-4 py-2 text-muted-foreground font-medium">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {csvRows.slice(0, 5).map((row, i) => (
+                      <tr key={i} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                        {Object.values(row).map((v, j) => (
+                          <td key={j} className="px-4 py-2 text-foreground/80 truncate max-w-[160px]">{v}</td>
+                        ))}
+                      </tr>
+                    ))}
+                    {csvRows.length > 5 && (
+                      <tr>
+                        <td colSpan={Object.keys(csvRows[0]).length} className="px-4 py-2 text-muted-foreground text-center">
+                          +{csvRows.length - 5} more rows
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div className="px-5 py-3 border-t border-white/[0.08]">
+                <Button onClick={runCsvMatch} disabled={csvLoading} className="gap-2">
+                  {csvLoading
+                    ? <div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                    : <Sparkles className="w-3.5 h-3.5" />
+                  }
+                  {csvLoading ? `Matching ${csvRows.length} startups…` : `Match All ${csvRows.length} Startups`}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* CSV results */}
+          {csvDone && csvResults.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">{csvResults.length} startups matched</p>
+                <Button variant="outline" size="sm" onClick={() => { setCsvFile(null); setCsvRows([]); setCsvResults([]); setCsvDone(false); }} className="gap-1.5 text-xs">
+                  <X className="w-3 h-3" /> Clear
+                </Button>
+              </div>
+              {csvResults.map(({ row, matches: rowMatches }, ri) => (
+                <div key={ri} className="rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+                  <div className="px-5 py-3 border-b border-white/[0.06] flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-primary/20 flex items-center justify-center text-[11px] font-bold text-primary flex-shrink-0">
+                      {(row.startup_name || row.name || `S${ri+1}`).slice(0,2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-semibold">{row.startup_name || row.name || `Startup ${ri+1}`}</p>
+                      <p className="text-[11px] text-muted-foreground">{[row.industry, row.stage, row.country].filter(Boolean).join(" · ")}</p>
+                    </div>
+                    {rowMatches.length === 0 && (
+                      <div className="ml-auto flex items-center gap-1.5 text-xs text-yellow-400">
+                        <AlertCircle className="w-3.5 h-3.5" /> No matches found
+                      </div>
+                    )}
+                  </div>
+                  {rowMatches.length > 0 && (
+                    <div className="divide-y divide-white/[0.04]">
+                      {rowMatches.map((m: any, mi: number) => {
+                        const name = m.mentor_name || m.programme_name || m.firm_name || "Unknown";
+                        const score = m.compatibility_score ?? m.fit_score ?? 0;
+                        return (
+                          <div key={mi} className="flex items-center gap-3 px-5 py-3">
+                            <span className="text-[11px] text-muted-foreground w-4 flex-shrink-0">#{mi+1}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[12px] font-medium truncate">{name}</p>
+                              <p className="text-[11px] text-muted-foreground line-clamp-1">{m.reasoning}</p>
+                            </div>
+                            <div className="flex-shrink-0 text-right">
+                              <p className="text-[13px] font-bold text-primary">{Math.round(score)}%</p>
+                              <p className="text-[9px] text-muted-foreground uppercase tracking-wide">match</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!csvFile && (
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.01] p-4">
+              <p className="text-[12px] font-semibold text-muted-foreground mb-2">Expected CSV format</p>
+              <pre className="text-[11px] font-mono text-foreground/60 leading-relaxed">
+{`id,startup_name,industry,stage,country
+abc123,AgriTech Kenya,Agriculture,seed,Kenya
+def456,EduPay,Fintech,series_a,Nigeria`}
+              </pre>
+              <p className="text-[11px] text-muted-foreground mt-2">The <span className="font-mono text-foreground/70">id</span> column is used to look up the startup. If omitted, the first startup in the system is used as a proxy.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Startup Selector Tab ──────────────────────────────── */}
+      {pageTab === "selector" && <>
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -407,6 +655,8 @@ export default function MatchesPage() {
           </Button>
         </motion.div>
       )}
+
+      </>}
     </DashboardLayout>
   );
 }
